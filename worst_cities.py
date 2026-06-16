@@ -1,13 +1,15 @@
-"""Worst Fictional Cities to Live In - game menu + loading screen.
+"""Worst Fictional Cities to Live In - ranked countdown menu + loading screen.
 
-An amber CRT "archive terminal" boot screen: a selectable index of 13 fictional
-cities. A cursor steps through them one by one; each selection opens the file -
-the cover image and dossier update on the right and a per-file loading bar runs
-to ACCESS GRANTED before moving on. Ends on PRESS START.
+An amber CRT "archive terminal" boot screen: a ranked index of the 13 worst
+fictional cities (#13 at the top down to #01 at the bottom). A cursor steps
+through them one by one from #13 to #01; each selection opens the file - the
+cover image and dossier update on the right and a per-file loading bar runs to
+ACCESS GRANTED. The countdown ends on #01 THE MEGASTRUCTURE, then PRESS START.
 
 Typography: Press Start 2P (title) + VT323 (terminal body).
-Cover images: drop one file per city in assets/covers/ named with the number
-prefix (e.g. 01_gotham_city.png). Missing files fall back to a clean placeholder.
+Cover images: drop one file per city in assets/covers/ named with the RANK
+prefix (e.g. 01_the_megastructure.png is #1). Missing files fall back to a
+clean placeholder.
 
 Render:
     manim -pqh worst_cities.py WorstCities
@@ -15,7 +17,6 @@ Render:
 
 import glob
 import os
-import textwrap
 
 import numpy as np
 from manim import *
@@ -36,24 +37,26 @@ FONT_BODY  = "VT323"
 COVER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          "assets", "covers")
 
-# name, source, rating, descriptor
+# Display order = ranked countdown: top of list is #13, bottom is #01.
+# (name, source, threat rating)
 CITIES = [
-    ("GOTHAM CITY",   "BATMAN",            "EXTREME"),
-    ("MIDGAR",        "FINAL FANTASY VII", "SEVERE"),
-    ("LOS ANGELES",   "BLADE RUNNER",      "HIGH"),
-    ("RAPTURE",       "BIOSHOCK",          "EXTREME"),
-    ("CITY 17",       "HALF-LIFE 2",       "SEVERE"),
-    ("MEGA-CITY ONE", "JUDGE DREDD",       "APOCALYPTIC"),
-    ("ZAUN",          "ARCANE / LOL",      "HIGH"),
-    ("YHARNAM",       "BLOODBORNE",        "EXTREME"),
-    ("THE CITY",      "BLAME!",            "UNMEASURABLE"),
-    ("SILENT HILL",   "SILENT HILL",       "ABSOLUTE"),
-    ("NEW CROBUZON",  "BAS-LAG",           "SEVERE"),
-    ("COMMORRAGH",    "WARHAMMER 40K",     "APOCALYPTIC"),
-    ("DIS",           "DANTE'S INFERNO",   "INFERNAL"),
+    ("LOS SUEÑOS",        "READY OR NOT",       "HIGH"),          # 13
+    ("NIGHT CITY",        "CYBERPUNK 2077",     "SEVERE"),        # 12
+    ("RAPTURE",           "BIOSHOCK",           "EXTREME"),       # 11
+    ("CITY 17",           "HALF-LIFE 2",        "EXTREME"),       # 10
+    ("HANUDA VILLAGE",    "FORBIDDEN SIREN",    "LETHAL"),        # 09
+    ("THE CITY",          "PROJECT MOON",       "APOCALYPTIC"),   # 08
+    ("YHARNAM",           "BLOODBORNE",         "APOCALYPTIC"),   # 07
+    ("NEW CROBUZON",      "BAS-LAG",            "NIGHTMARE"),     # 06
+    ("SILENT HILL",       "SILENT HILL",        "PSYCHIC"),       # 05
+    ("CARCOSA",           "THE KING IN YELLOW", "COGNITOHAZARD"), # 04
+    ("MA'HABRE",          "FEAR & HUNGER",      "ABYSSAL"),       # 03
+    ("COMMORRAGH",        "WARHAMMER 40K",      "ABSOLUTE"),      # 02
+    ("THE MEGASTRUCTURE", "BLAME!",             "UNMEASURABLE"),  # 01
 ]
 
-HIGH_TIER = {"EXTREME", "APOCALYPTIC", "UNMEASURABLE", "ABSOLUTE", "INFERNAL"}
+HIGH_TIER = {"EXTREME", "LETHAL", "APOCALYPTIC", "NIGHTMARE", "PSYCHIC",
+             "COGNITOHAZARD", "ABYSSAL", "ABSOLUTE", "UNMEASURABLE"}
 
 
 def rcolor(rating):
@@ -65,7 +68,11 @@ def rcolor(rating):
 
 
 def slug(name):
-    return name.replace(" ", "_").replace("-", "_").replace("'", "")
+    out = name.upper()
+    for a, b in [(" ", "_"), ("-", "_"), ("'", ""), ("Ñ", "N"), ("!", ""),
+                 ("&", "AND")]:
+        out = out.replace(a, b)
+    return out
 
 
 class WorstCities(Scene):
@@ -93,6 +100,12 @@ class WorstCities(Scene):
         def cur():
             return CITIES[cur_i()]
 
+        def rank(i):                      # #13 at top ... #01 at bottom
+            return N - i
+
+        def cur_rank():
+            return rank(cur_i())
+
         # =================================================================
         # FRAME + HEADER + TITLE
         # =================================================================
@@ -100,7 +113,7 @@ class WorstCities(Scene):
                           stroke_width=1.5, fill_opacity=0)
 
         hl1 = left(T("WORST CITIES INDEX", 26, AMBER), -6.5, 3.46)
-        hl2 = left(T("LOCAL ACCESS TERMINAL // SECTION SELECT", 18, AMBER_DIM), -6.5, 3.18)
+        hl2 = left(T("LOCAL ACCESS TERMINAL // RANKED COUNTDOWN", 18, AMBER_DIM), -6.5, 3.18)
         hr1 = right(T("ARCHIVE NODE 07", 26, AMBER), 6.5, 3.46)
         hr2 = right(T("LOCAL NODE // ACTIVE", 18, AMBER_DIM), 6.5, 3.18)
         head_div = Line([-6.55, 2.94, 0], [6.55, 2.94, 0], color=BORDER, stroke_width=1)
@@ -108,7 +121,7 @@ class WorstCities(Scene):
         title = Text("WORST CITIES", font=FONT_TITLE, color=AMBER_BRT)
         title.scale_to_fit_width(8.6).move_to([0, 2.30, 0])
         title_glow = title.copy().set_color(AMBER).set_opacity(0.25).set_stroke(AMBER, 6, 0.18)
-        subtitle = T("// FICTIONAL CITIES TO LIVE IN //", 20, AMBER_DIM).move_to([0, 1.74, 0])
+        subtitle = T("// THE 13 WORST PLACES TO LIVE // 13 TO 01 //", 20, AMBER_DIM).move_to([0, 1.74, 0])
 
         # =================================================================
         # LEFT LIST PANEL
@@ -120,13 +133,12 @@ class WorstCities(Scene):
         lp_h2 = right(T("13 FILES FOUND", 18, AMBER_DIM), 0.16, 1.28)
         lp_div = Line([-6.45, 1.05, 0], [0.2, 1.05, 0], color=BORDER, stroke_width=1)
 
-        row_x, row_y0, row_dy = -6.05, 0.74, 0.255
+        row_x, rate_x, row_y0, row_dy = -6.05, -0.35, 0.74, 0.255
         row_mobs = []
         for i, (name, source, rating) in enumerate(CITIES):
-            s = f"[{i+1:02d}]  {name:<14}{rating:>13}"
-            row = left(T(s, 22, AMBER, t2c={rating: rcolor(rating)}),
-                       row_x, row_y0 - i * row_dy)
-            row_mobs.append(row)
+            lbl = left(T(f"[{rank(i):02d}]  {name}", 20, AMBER), row_x, row_y0 - i * row_dy)
+            rt = right(T(rating, 20, rcolor(rating)), rate_x, row_y0 - i * row_dy)
+            row_mobs.append(VGroup(lbl, rt))
 
         highlight = always_redraw(lambda: RoundedRectangle(
             width=6.3, height=0.25, corner_radius=0.03, stroke_color=AMBER_BRT,
@@ -145,7 +157,7 @@ class WorstCities(Scene):
                                 fill_opacity=1).move_to(COVER_C)
         cov_l = left(T("COVER IMAGE", 17, AMBER_DIM), 0.3, 1.05).set_z_index(5)
         cover_tag = always_redraw(lambda: right(
-            T(f"{cur_i()+1:02d} // {cur()[0]}", 17, AMBER), 6.26, 1.05).set_z_index(5))
+            T(f"{cur_rank():02d} // {cur()[0]}", 17, AMBER), 6.26, 1.05).set_z_index(5))
         cover_scan = VGroup(*[
             Line([COVER_C[0] - CBOX_W / 2, y, 0], [COVER_C[0] + CBOX_W / 2, y, 0],
                  color=BG, stroke_width=2, stroke_opacity=0.16)
@@ -153,7 +165,7 @@ class WorstCities(Scene):
         ]).set_z_index(3)
 
         def build_cover(i):
-            files = sorted(glob.glob(os.path.join(COVER_DIR, f"{i+1:02d}_*")))
+            files = sorted(glob.glob(os.path.join(COVER_DIR, f"{rank(i):02d}_*")))
             files = [f for f in files if not f.lower().endswith((".md", ".txt"))]
             if files:
                 img = ImageMobject(files[0]).set_z_index(1)
@@ -177,9 +189,9 @@ class WorstCities(Scene):
                                fill_opacity=0.5).move_to([3.28, -1.52, 0])
         pv_h = left(T("FILE PREVIEW", 22, AMBER), 0.3, -0.66)
         file_tag = always_redraw(lambda: right(
-            T(f"FILE_{cur_i()+1:02d}", 18, AMBER_DIM), 6.26, -0.66))
+            T(f"RANK_{cur_rank():02d}", 18, AMBER_DIM), 6.26, -0.66))
 
-        f_labels = ["TITLE", "SOURCE", "NODE", "THREAT", "STATUS"]
+        f_labels = ["TITLE", "SOURCE", "RANK", "THREAT", "STATUS"]
         label_x, val_x = 0.32, 2.05
         fy0, fdy = -1.02, -0.255
         label_mobs = VGroup(*[
@@ -191,8 +203,8 @@ class WorstCities(Scene):
 
         title_val = always_redraw(lambda: left(T(cur()[0], 18, AMBER_BRT), val_x, fy0))
         source_val = always_redraw(lambda: left(T(cur()[1], 18, AMBER), val_x, fy0 + fdy))
-        node_val = always_redraw(lambda: left(
-            T(f"SUBSTRUCTURE {cur_i()+1:02d}", 18, AMBER), val_x, fy0 + 2 * fdy))
+        rank_val = always_redraw(lambda: left(
+            T(f"#{cur_rank():02d} OF {N:02d}", 18, AMBER), val_x, fy0 + 2 * fdy))
         threat_val = always_redraw(lambda: left(
             T(cur()[2], 18, rcolor(cur()[2])), val_x, fy0 + 3 * fdy))
 
@@ -215,7 +227,7 @@ class WorstCities(Scene):
               18, AMBER_BRT if prog.get_value() > 0.999 else AMBER_DIM), 6.5, -2.97))
 
         load_dyn = always_redraw(lambda: left(
-            T(f"LOADING  FILE {cur_i()+1:02d}/{N:02d}", 17, AMBER_DIM), -6.5, -3.24))
+            T(f"LOADING  RANK {cur_rank():02d}/{N:02d}", 17, AMBER_DIM), -6.5, -3.24))
 
         bar_l, bar_w, bar_y = -2.55, 6.95, -3.24
         bar_bg = Rectangle(width=bar_w, height=0.15, stroke_color=AMBER_DIM,
@@ -256,12 +268,11 @@ class WorstCities(Scene):
         self.play(LaggedStart(*[FadeIn(r, shift=RIGHT * 0.1) for r in row_mobs],
                               lag_ratio=0.08), run_time=1.6)
 
-        # add all dynamic / live mobjects
         self.add(highlight, marker, cover_scan, cover_tag, file_tag,
-                 title_val, source_val, node_val, threat_val,
+                 title_val, source_val, rank_val, threat_val,
                  cmd_dyn, status_dyn, load_dyn, bar_fill, pct)
 
-        # --- Step through every file with a per-file load ---
+        # --- Countdown: open every file from #13 down to #01 ---
         prev_cover = build_cover(0)
         self.play(FadeIn(prev_cover), run_time=0.4)
         self.play(prog.animate.set_value(1.0), run_time=0.6)
@@ -272,8 +283,9 @@ class WorstCities(Scene):
             prog.set_value(0.0)
             new_cover = build_cover(i)
             self.play(FadeOut(prev_cover), FadeIn(new_cover), run_time=0.3)
-            self.play(prog.animate.set_value(1.0), run_time=0.55)
-            self.wait(0.22)
+            # the #1 reveal lands a touch slower for weight
+            self.play(prog.animate.set_value(1.0), run_time=0.7 if i == N - 1 else 0.55)
+            self.wait(0.45 if i == N - 1 else 0.22)
             prev_cover = new_cover
 
         self.wait(0.3)

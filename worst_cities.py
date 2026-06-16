@@ -208,8 +208,6 @@ class WorstCities(Scene):
         cover_tag = always_redraw(lambda: right(
             T(f"{cur_rank():02d} // {cur()[0]}", 17, GREEN),
             6.42, COVER_C[1] + CBOX_H / 2 - 0.18).set_z_index(5))
-        feed_tag = left(T("VISUAL FEED", 15, GREEN_DIM), 0.2,
-                        COVER_C[1] + CBOX_H / 2 - 0.18).set_z_index(5)
         cov_status = right(T("ACTIVE / UNSTABLE", 15, RED), 6.42,
                            COVER_C[1] - CBOX_H / 2 + 0.18).set_z_index(5)
         cov_scale = left(T("SIGNAL // UNSTABLE", 14, GREEN_DIM), 0.2,
@@ -234,10 +232,20 @@ class WorstCities(Scene):
             return ph.set_z_index(1)
 
         def make_loaded():
-            txt = T("LOADED", 46, GREEN_BRT)
-            box = SurroundingRectangle(txt, color=GREEN, buff=0.28, stroke_width=3.5)
-            grp = VGroup(box, txt).rotate(-7 * DEGREES).move_to(COVER_C + np.array([0, 0.1, 0]))
-            return neon(grp, GREEN, widths=(11, 5), ops=(0.08, 0.18)).set_z_index(9)
+            txt = T("LOADED", 44, GREEN_BRT)
+            sub = T("ACCESS GRANTED", 15, GREEN)
+            inner = VGroup(txt, sub).arrange(DOWN, buff=0.12)
+            box = SurroundingRectangle(inner, color=GREEN, buff=0.34, stroke_width=4)
+            corners = VGroup()
+            Lc = 0.26
+            for cd in [UL, UR, DL, DR]:
+                c = box.get_corner(cd)
+                hx = Lc if cd[0] < 0 else -Lc
+                vy = -Lc if cd[1] > 0 else Lc
+                corners.add(Line(c, c + np.array([hx, 0, 0]), color=GREEN_BRT, stroke_width=5))
+                corners.add(Line(c, c + np.array([0, vy, 0]), color=GREEN_BRT, stroke_width=5))
+            grp = VGroup(box, corners, inner).rotate(-6 * DEGREES).move_to(COVER_C + np.array([0, 0.05, 0]))
+            return neon(grp, GREEN, widths=(9, 4), ops=(0.07, 0.16)).set_z_index(9)
 
         # =================================================================
         # RIGHT - COMPACT DOSSIER STRIP
@@ -324,8 +332,10 @@ class WorstCities(Scene):
 
         self.add(frame_glow)
         self.play(Create(frame), run_time=0.6)
-        self.play(LaggedStart(FadeIn(hl1), FadeIn(hl2), FadeIn(hr1), FadeIn(hr2),
-                              lag_ratio=0.15), Create(head_div), run_time=0.8)
+        # code-style typewriter reveal of the header
+        self.play(AddTextLetterByLetter(hl1), AddTextLetterByLetter(hr1), run_time=0.7)
+        self.play(AddTextLetterByLetter(hl2), AddTextLetterByLetter(hr2),
+                  Create(head_div), run_time=0.7)
         self.play(FadeIn(title, scale=1.06), run_time=0.7)
         self.play(FadeIn(subtitle), run_time=0.3)
 
@@ -333,7 +343,7 @@ class WorstCities(Scene):
                   Create(doss), run_time=0.7)
         self.play(
             FadeIn(lp_h1), FadeIn(lp_h2), Create(lp_div),
-            FadeIn(top_strip), FadeIn(bot_strip), FadeIn(feed_tag), FadeIn(cov_scale),
+            FadeIn(top_strip), FadeIn(bot_strip), FadeIn(cov_scale),
             FadeIn(cov_status), FadeIn(d_lab), Create(bot_div),
             FadeIn(cmd_prefix), FadeIn(bar_bg), FadeIn(hint),
             run_time=0.6,
@@ -362,11 +372,12 @@ class WorstCities(Scene):
 
         def load_and_stamp(last=False):
             self.add_sound(snd("blip.wav"), gain=-9)
-            self.play(prog.animate.set_value(1.0), run_time=1.2, rate_func=loadrf)
+            self.play(prog.animate.set_value(1.0), run_time=1.25, rate_func=loadrf)
             stamp = make_loaded()
             self.add_sound(snd("loaded.wav"), gain=-4)
-            self.play(FadeIn(stamp, scale=1.6), run_time=0.22, rate_func=rush_from)
-            self.wait(1.4 if last else 1.0)
+            self.play(FadeIn(stamp, scale=1.7), run_time=0.16, rate_func=rush_from)
+            self.play(stamp.animate.scale(1.06), run_time=0.09, rate_func=there_and_back)
+            self.wait(2.1 if last else 1.55)
             return stamp
 
         prev_cover = build_cover(0)

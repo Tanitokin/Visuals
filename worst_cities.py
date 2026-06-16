@@ -62,6 +62,23 @@ CITIES = [
     ("THE MEGASTRUCTURE", "BLAME!",             "UNMEASURABLE"),  # 01
 ]
 
+# one-line field description per city (same order as CITIES)
+DESCRIPTIONS = [
+    "Every quiet house hides trafficking, cults or something worse.",
+    "Chrome, corpos and crime - a city that sells you back to you.",
+    "An undersea utopia drowned by ADAM and splicer madness.",
+    "Alien occupation, total surveillance, humanity domesticated.",
+    "A time-looped village sealed inside ritual and divine horror.",
+    "Fixers, Wings and Backstreets where the inhuman is routine.",
+    "Healing blood and beasts under an endless hunter's night.",
+    "Industrial squalor where the body is turned into a sentence.",
+    "A town that reshapes its nightmares around your own guilt.",
+    "A conceptual plague of masks, decay and shattered sanity.",
+    "An ancient ruin of failed ascension, sacrifice and dead gods.",
+    "A dark city whose economy and culture run on pure suffering.",
+    "An infinite machine-city where humanity survives as residue.",
+]
+
 HIGH_TIER = {"EXTREME", "LETHAL", "APOCALYPTIC", "NIGHTMARE", "PSYCHIC",
              "COGNITOHAZARD", "ABYSSAL", "ABSOLUTE", "UNMEASURABLE"}
 
@@ -157,11 +174,16 @@ class WorstCities(Scene):
         hr2 = right(T("LOCAL NODE // ACTIVE", 18, GREEN_DIM), 6.5, 3.18)
         head_div = Line([-6.55, 2.94, 0], [6.55, 2.94, 0], color=BORDER, stroke_width=1)
 
-        title_t = Text("WORST CITIES", font=TITLE_FONT, weight=TITLE_WEIGHT,
-                       color=GREEN_BRT).scale_to_fit_width(TITLE_W).move_to([0, 2.30, 0])
-        # single subtle glow layer (no heavy halos), kept above the scanlines
-        title = neon(title_t, GREEN, widths=(4,), ops=(0.12,)).set_z_index(20)
-        subtitle = T("// THE 13 WORST PLACES TO LIVE // 13 TO 01 //", 20, GREEN_DIM).move_to([0, 1.72, 0])
+        # no big title - the freed space shows a rotating per-city field note
+        subtitle = T("// THE 13 WORST PLACES TO LIVE // RANKED 13 TO 01 //",
+                     18, GREEN_DIM).move_to([0, 2.52, 0])
+
+        def make_desc():
+            m = T(f'"{DESCRIPTIONS[cur_i()]}"', 25, GREEN_BRT)
+            if m.width > 12.6:
+                m.scale_to_fit_width(12.6)
+            return m.move_to([0, 2.00, 0]).set_z_index(20)
+        desc = always_redraw(make_desc)
 
         # =================================================================
         # LEFT LIST PANEL
@@ -336,8 +358,8 @@ class WorstCities(Scene):
         self.play(AddTextLetterByLetter(hl1), AddTextLetterByLetter(hr1), run_time=0.7)
         self.play(AddTextLetterByLetter(hl2), AddTextLetterByLetter(hr2),
                   Create(head_div), run_time=0.7)
-        self.play(FadeIn(title, scale=1.06), run_time=0.7)
-        self.play(FadeIn(subtitle), run_time=0.3)
+        self.play(FadeIn(subtitle), run_time=0.4)
+        self.add(desc)
 
         self.play(Create(list_panel), Create(cover_panel), Create(cover_frame),
                   Create(doss), run_time=0.7)

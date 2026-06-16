@@ -1,11 +1,11 @@
-"""Worst Fictional Cities to Live In - cinematic loading screen.
+"""Worst Fictional Cities to Live In - game menu + loading screen.
 
-A clean amber CRT archive terminal streams through 13 fictional cities, one at a
-time. Each city gets a near-fullscreen card: a large cover image (loaded from
-assets/covers/) on the left, and its dossier on the right - index, name, source,
-threat level, a hazard meter and a one-line descriptor. Smooth crossfades, a
-loading bar and segmented progress ticks tie it together, ending on PRESS START.
+An amber CRT "archive terminal" boot screen: a selectable index of 13 fictional
+cities. A cursor steps through them one by one; each selection opens the file -
+the cover image and dossier update on the right and a per-file loading bar runs
+to ACCESS GRANTED before moving on. Ends on PRESS START.
 
+Typography: Press Start 2P (title) + VT323 (terminal body).
 Cover images: drop one file per city in assets/covers/ named with the number
 prefix (e.g. 01_gotham_city.png). Missing files fall back to a clean placeholder.
 
@@ -30,39 +30,27 @@ BORDER      = "#7A4B1E"
 PANEL_FILL  = "#140D08"
 COVER_FILL  = "#0A0605"
 
-MONO = "DejaVu Sans Mono"
+FONT_TITLE = "Press Start 2P"
+FONT_BODY  = "VT323"
 
 COVER_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)),
                          "assets", "covers")
 
-# name, source, rating, hazard(/6), descriptor
+# name, source, rating, descriptor
 CITIES = [
-    ("GOTHAM CITY",   "BATMAN",            "EXTREME",      5,
-     "Crime never sleeps. Neither should you."),
-    ("MIDGAR",        "FINAL FANTASY VII", "SEVERE",       4,
-     "Mako-poisoned skies over a corporate dystopia."),
-    ("LOS ANGELES",   "BLADE RUNNER",      "HIGH",         3,
-     "Acid rain, replicants, and permanent night."),
-    ("RAPTURE",       "BIOSHOCK",          "EXTREME",      5,
-     "A drowned utopia run by spliced madmen."),
-    ("CITY 17",       "HALF-LIFE 2",       "SEVERE",       4,
-     "Combine occupation. Citizenship is mandatory."),
-    ("MEGA-CITY ONE", "JUDGE DREDD",       "APOCALYPTIC",  6,
-     "800 million souls. One judge per block."),
-    ("ZAUN",          "ARCANE / LOL",      "HIGH",         3,
-     "The toxic underbelly of a shining city."),
-    ("YHARNAM",       "BLOODBORNE",        "EXTREME",      5,
-     "A plague of beasts and very bad blood."),
-    ("THE CITY",      "BLAME!",            "UNMEASURABLE", 6,
-     "Infinite architecture. There is no exit."),
-    ("SILENT HILL",   "SILENT HILL",       "ABSOLUTE",     6,
-     "The town remembers what you did."),
-    ("NEW CROBUZON",  "BAS-LAG",           "SEVERE",       4,
-     "An industrial nightmare of flesh and steam."),
-    ("COMMORRAGH",    "WARHAMMER 40K",     "APOCALYPTIC",  6,
-     "The dark city feeds on living suffering."),
-    ("DIS",           "DANTE'S INFERNO",   "INFERNAL",     6,
-     "The iron city at the heart of Hell."),
+    ("GOTHAM CITY",   "BATMAN",            "EXTREME"),
+    ("MIDGAR",        "FINAL FANTASY VII", "SEVERE"),
+    ("LOS ANGELES",   "BLADE RUNNER",      "HIGH"),
+    ("RAPTURE",       "BIOSHOCK",          "EXTREME"),
+    ("CITY 17",       "HALF-LIFE 2",       "SEVERE"),
+    ("MEGA-CITY ONE", "JUDGE DREDD",       "APOCALYPTIC"),
+    ("ZAUN",          "ARCANE / LOL",      "HIGH"),
+    ("YHARNAM",       "BLOODBORNE",        "EXTREME"),
+    ("THE CITY",      "BLAME!",            "UNMEASURABLE"),
+    ("SILENT HILL",   "SILENT HILL",       "ABSOLUTE"),
+    ("NEW CROBUZON",  "BAS-LAG",           "SEVERE"),
+    ("COMMORRAGH",    "WARHAMMER 40K",     "APOCALYPTIC"),
+    ("DIS",           "DANTE'S INFERNO",   "INFERNAL"),
 ]
 
 HIGH_TIER = {"EXTREME", "APOCALYPTIC", "UNMEASURABLE", "ABSOLUTE", "INFERNAL"}
@@ -76,13 +64,17 @@ def rcolor(rating):
     return AMBER_DIM
 
 
+def slug(name):
+    return name.replace(" ", "_").replace("-", "_").replace("'", "")
+
+
 class WorstCities(Scene):
     def construct(self):
         self.camera.background_color = BG
+        N = len(CITIES)
 
-        def T(s, size, color=AMBER, weight=NORMAL, t2c=None):
-            return Text(s, font=MONO, font_size=size, color=color,
-                        weight=weight, t2c=t2c or {})
+        def T(s, size, color=AMBER, font=FONT_BODY, t2c=None):
+            return Text(s, font=font, font_size=size, color=color, t2c=t2c or {})
 
         def left(mob, x, y):
             mob.move_to([x, y, 0]).align_to([x, y, 0], LEFT)
@@ -92,42 +84,140 @@ class WorstCities(Scene):
             mob.move_to([x, y, 0]).align_to([x, y, 0], RIGHT)
             return mob
 
-        N = len(CITIES)
+        sel = ValueTracker(0)
+        prog = ValueTracker(0.0)
 
-        # ---- geometry --------------------------------------------------
-        COVER_C = np.array([-3.55, -0.10, 0])
-        BOX_W, BOX_H = 5.25, 4.25
-        TX = -0.55                      # left edge of the text column
+        def cur_i():
+            return int(np.clip(round(sel.get_value()), 0, N - 1))
+
+        def cur():
+            return CITIES[cur_i()]
 
         # =================================================================
-        # PERSISTENT CHROME
+        # FRAME + HEADER + TITLE
         # =================================================================
         frame = Rectangle(width=13.9, height=7.55, stroke_color=BORDER,
                           stroke_width=1.5, fill_opacity=0)
 
-        hl = left(T("WORST CITIES // UNINHABITABLE ARCHIVE", 15, AMBER), -6.55, 3.5)
-        hr = right(T("NODE 07 // STREAMING", 15, AMBER_DIM), 6.55, 3.5)
-        head_div = Line([-6.6, 3.28, 0], [6.6, 3.28, 0], color=BORDER, stroke_width=1)
+        hl1 = left(T("WORST CITIES INDEX", 26, AMBER), -6.5, 3.46)
+        hl2 = left(T("LOCAL ACCESS TERMINAL // SECTION SELECT", 18, AMBER_DIM), -6.5, 3.18)
+        hr1 = right(T("ARCHIVE NODE 07", 26, AMBER), 6.5, 3.46)
+        hr2 = right(T("LOCAL NODE // ACTIVE", 18, AMBER_DIM), 6.5, 3.18)
+        head_div = Line([-6.55, 2.94, 0], [6.55, 2.94, 0], color=BORDER, stroke_width=1)
 
-        # cover frame chrome (image swaps inside; this stays put)
-        cover_bg = Rectangle(width=BOX_W, height=BOX_H, stroke_width=0,
-                             fill_color=COVER_FILL, fill_opacity=1).move_to(COVER_C)
+        title = Text("WORST CITIES", font=FONT_TITLE, color=AMBER_BRT)
+        title.scale_to_fit_width(8.6).move_to([0, 2.30, 0])
+        title_glow = title.copy().set_color(AMBER).set_opacity(0.25).set_stroke(AMBER, 6, 0.18)
+        subtitle = T("// FICTIONAL CITIES TO LIVE IN //", 20, AMBER_DIM).move_to([0, 1.74, 0])
+
+        # =================================================================
+        # LEFT LIST PANEL
+        # =================================================================
+        list_panel = Rectangle(width=6.55, height=4.05, stroke_color=BORDER,
+                               stroke_width=1.5, fill_color=PANEL_FILL,
+                               fill_opacity=0.5).move_to([-3.27, -0.55, 0])
+        lp_h1 = left(T("CITY FILES", 24, AMBER), -6.36, 1.28)
+        lp_h2 = right(T("13 FILES FOUND", 18, AMBER_DIM), 0.16, 1.28)
+        lp_div = Line([-6.45, 1.05, 0], [0.2, 1.05, 0], color=BORDER, stroke_width=1)
+
+        row_x, row_y0, row_dy = -6.05, 0.74, 0.255
+        row_mobs = []
+        for i, (name, source, rating) in enumerate(CITIES):
+            s = f"[{i+1:02d}]  {name:<14}{rating:>13}"
+            row = left(T(s, 22, AMBER, t2c={rating: rcolor(rating)}),
+                       row_x, row_y0 - i * row_dy)
+            row_mobs.append(row)
+
+        highlight = always_redraw(lambda: RoundedRectangle(
+            width=6.3, height=0.25, corner_radius=0.03, stroke_color=AMBER_BRT,
+            stroke_width=1.4, fill_color=AMBER, fill_opacity=0.10
+        ).move_to([-3.12, row_y0 - cur_i() * row_dy, 0]))
+        marker = always_redraw(lambda: T(">", 22, AMBER_BRT).move_to(
+            [-6.33, row_y0 - cur_i() * row_dy, 0]))
+
+        # =================================================================
+        # RIGHT COVER PANEL
+        # =================================================================
+        COVER_C = np.array([3.28, 0.50, 0])
+        CBOX_W, CBOX_H = 6.4, 1.62
+        cover_panel = Rectangle(width=CBOX_W, height=CBOX_H, stroke_color=BORDER,
+                                stroke_width=1.5, fill_color=COVER_FILL,
+                                fill_opacity=1).move_to(COVER_C)
+        cov_l = left(T("COVER IMAGE", 17, AMBER_DIM), 0.3, 1.05).set_z_index(5)
+        cover_tag = always_redraw(lambda: right(
+            T(f"{cur_i()+1:02d} // {cur()[0]}", 17, AMBER), 6.26, 1.05).set_z_index(5))
         cover_scan = VGroup(*[
-            Line([COVER_C[0] - BOX_W / 2, y, 0], [COVER_C[0] + BOX_W / 2, y, 0],
+            Line([COVER_C[0] - CBOX_W / 2, y, 0], [COVER_C[0] + CBOX_W / 2, y, 0],
                  color=BG, stroke_width=2, stroke_opacity=0.16)
-            for y in np.arange(COVER_C[1] - BOX_H / 2, COVER_C[1] + BOX_H / 2, 0.11)
+            for y in np.arange(COVER_C[1] - CBOX_H / 2, COVER_C[1] + CBOX_H / 2, 0.10)
         ]).set_z_index(3)
-        cover_frame = Rectangle(width=BOX_W, height=BOX_H, stroke_color=AMBER,
-                                stroke_width=2, fill_opacity=0).move_to(COVER_C).set_z_index(4)
-        cov_l = left(T("COVER IMAGE", 12, AMBER_DIM), COVER_C[0] - BOX_W / 2 + 0.12,
-                     COVER_C[1] + BOX_H / 2 - 0.22).set_z_index(5)
 
-        # footer
-        foot_div = Line([-6.6, -2.55, 0], [6.6, -2.55, 0], color=BORDER, stroke_width=1)
-        load_lbl = left(T("STREAMING ARCHIVE", 13, AMBER_DIM), -6.55, -2.92)
+        def build_cover(i):
+            files = sorted(glob.glob(os.path.join(COVER_DIR, f"{i+1:02d}_*")))
+            files = [f for f in files if not f.lower().endswith((".md", ".txt"))]
+            if files:
+                img = ImageMobject(files[0]).set_z_index(1)
+                img.scale_to_fit_height(CBOX_H - 0.12)
+                if img.width > CBOX_W - 0.12:
+                    img.scale_to_fit_width(CBOX_W - 0.12)
+                return img.move_to(COVER_C)
+            name = CITIES[i][0]
+            ph_name = T(name, 30, AMBER)
+            if ph_name.width > CBOX_W - 0.8:
+                ph_name.scale_to_fit_width(CBOX_W - 0.8)
+            ph_tag = T("COVER PENDING", 16, AMBER_DIM)
+            ph = VGroup(ph_name, ph_tag).arrange(DOWN, buff=0.18).move_to(COVER_C)
+            return ph.set_z_index(1)
 
-        prog = ValueTracker(0.0)
-        bar_l, bar_w, bar_y = -3.55, 8.55, -2.92
+        # =================================================================
+        # RIGHT FILE-PREVIEW PANEL
+        # =================================================================
+        prev_panel = Rectangle(width=6.4, height=2.10, stroke_color=BORDER,
+                               stroke_width=1.5, fill_color=PANEL_FILL,
+                               fill_opacity=0.5).move_to([3.28, -1.52, 0])
+        pv_h = left(T("FILE PREVIEW", 22, AMBER), 0.3, -0.66)
+        file_tag = always_redraw(lambda: right(
+            T(f"FILE_{cur_i()+1:02d}", 18, AMBER_DIM), 6.26, -0.66))
+
+        f_labels = ["TITLE", "SOURCE", "NODE", "THREAT", "STATUS"]
+        label_x, val_x = 0.32, 2.05
+        fy0, fdy = -1.02, -0.255
+        label_mobs = VGroup(*[
+            left(T(lbl, 18, AMBER_DIM), label_x, fy0 + k * fdy)
+            for k, lbl in enumerate(f_labels)
+        ])
+        status_val = left(T("ACTIVE / UNSTABLE", 18, RED), val_x, fy0 + 4 * fdy)
+        req = left(T("OPEN REQUEST ACCEPTED", 17, AMBER), 0.32, -2.36)
+
+        title_val = always_redraw(lambda: left(T(cur()[0], 18, AMBER_BRT), val_x, fy0))
+        source_val = always_redraw(lambda: left(T(cur()[1], 18, AMBER), val_x, fy0 + fdy))
+        node_val = always_redraw(lambda: left(
+            T(f"SUBSTRUCTURE {cur_i()+1:02d}", 18, AMBER), val_x, fy0 + 2 * fdy))
+        threat_val = always_redraw(lambda: left(
+            T(cur()[2], 18, rcolor(cur()[2])), val_x, fy0 + 3 * fdy))
+
+        # =================================================================
+        # BOTTOM CMD STRIP (per-file loading)
+        # =================================================================
+        bot_div = Line([-6.55, -2.72, 0], [6.55, -2.72, 0], color=BORDER, stroke_width=1)
+        cmd_prefix = left(T("CMD> ", 22, AMBER), -6.5, -2.97)
+        cmd_x = -6.5 + cmd_prefix.width + 0.12
+
+        def make_cmd():
+            txt = T(f"OPEN {slug(cur()[0])}", 22, AMBER_BRT)
+            blk = Rectangle(width=0.17, height=0.30, stroke_width=0,
+                            fill_color=AMBER, fill_opacity=1).next_to(txt, RIGHT, buff=0.07)
+            return left(VGroup(txt, blk), cmd_x, -2.97)
+        cmd_dyn = always_redraw(make_cmd)
+
+        status_dyn = always_redraw(lambda: right(
+            T("ACCESS GRANTED" if prog.get_value() > 0.999 else "DECRYPTING ARCHIVE",
+              18, AMBER_BRT if prog.get_value() > 0.999 else AMBER_DIM), 6.5, -2.97))
+
+        load_dyn = always_redraw(lambda: left(
+            T(f"LOADING  FILE {cur_i()+1:02d}/{N:02d}", 17, AMBER_DIM), -6.5, -3.24))
+
+        bar_l, bar_w, bar_y = -2.55, 6.95, -3.24
         bar_bg = Rectangle(width=bar_w, height=0.15, stroke_color=AMBER_DIM,
                            stroke_width=1, fill_opacity=0).move_to([bar_l + bar_w / 2, bar_y, 0])
         bar_fill = always_redraw(lambda: Rectangle(
@@ -135,158 +225,69 @@ class WorstCities(Scene):
             fill_color=AMBER, fill_opacity=1
         ).move_to([bar_l + bar_w * prog.get_value() / 2, bar_y, 0]))
         pct = always_redraw(lambda: right(
-            T(f"{int(round(prog.get_value()*100)):3d}%", 13, AMBER_BRT), 6.55, bar_y))
+            T(f"{int(round(prog.get_value()*100)):3d}%", 18, AMBER_BRT), 6.5, bar_y))
 
-        # segmented progress ticks
-        cur = ValueTracker(-1)
-        tick_x0, tick_dx, tick_y = -6.55, 13.1 / (N - 1), -3.32
-
-        def cur_i():
-            return int(round(cur.get_value()))
-
-        ticks = always_redraw(lambda: VGroup(*[
-            Rectangle(width=0.74, height=0.07, stroke_width=0, fill_opacity=1,
-                      fill_color=(AMBER_BRT if k == cur_i()
-                                  else AMBER if k < cur_i() else AMBER_DIM)
-                      ).move_to([tick_x0 + k * tick_dx, tick_y, 0])
-            for k in range(N)]))
-
-        hint = T("ESC ABORT      ENTER OPEN FILE      ◄ ► CYCLE",
-                 11, AMBER_DIM).move_to([0, -3.62, 0])
-
-        chrome = Group(frame, hl, hr, head_div, cover_bg, cover_scan, cover_frame,
-                       cov_l, foot_div, load_lbl, bar_bg, bar_fill, pct, ticks, hint)
-
-        # =================================================================
-        # PER-CITY BUILDERS
-        # =================================================================
-        def build_cover(i):
-            files = sorted(glob.glob(os.path.join(COVER_DIR, f"{i+1:02d}_*")))
-            files = [f for f in files if not f.lower().endswith((".md", ".txt"))]
-            if files:
-                img = ImageMobject(files[0]).set_z_index(1)
-                img.scale_to_fit_height(BOX_H - 0.16)
-                if img.width > BOX_W - 0.16:
-                    img.scale_to_fit_width(BOX_W - 0.16)
-                img.move_to(COVER_C)
-                return img
-            # clean placeholder
-            name = CITIES[i][0]
-            ph_name = VGroup(*[T(ln, 22, AMBER, weight=BOLD)
-                               for ln in textwrap.wrap(name, 12)]).arrange(DOWN, buff=0.12)
-            ph_tag = T("COVER PENDING", 13, AMBER_DIM)
-            ph = VGroup(ph_name, ph_tag).arrange(DOWN, buff=0.45).move_to(COVER_C)
-            ph.set_z_index(1)
-            return ph
-
-        def build_text(i):
-            name, source, rating, hazard, desc = CITIES[i]
-
-            idx = T(f"{i+1:02d}", 58, AMBER_BRT, weight=BOLD)
-            left(idx, TX, 1.55)
-            idx_tot = left(T(f"/ {N:02d}", 18, AMBER_DIM), TX + idx.width + 0.2, 1.42)
-
-            name_m = T(name, 36, AMBER_BRT, weight=BOLD)
-            if name_m.width > 6.9:
-                name_m.scale_to_fit_width(6.9)
-            left(name_m, TX, 0.62)
-
-            source_m = left(T("SOURCE", 16, AMBER_DIM), TX, 0.06)
-            source_v = left(T(source, 16, AMBER), TX + 1.55, 0.06)
-
-            div = Line([TX, -0.28, 0], [6.4, -0.28, 0], color=BORDER, stroke_width=1)
-
-            thr_l = left(T("THREAT LEVEL", 14, AMBER_DIM), TX, -0.66)
-            pill_t = T(rating, 15, rcolor(rating), weight=BOLD)
-            pill = SurroundingRectangle(pill_t, color=rcolor(rating), buff=0.13,
-                                        corner_radius=0.06, stroke_width=1.6)
-            pill_g = VGroup(pill, pill_t)
-            left(pill_g, TX + 2.55, -0.66)
-
-            # hazard meter (6 blocks)
-            blocks = VGroup()
-            for k in range(6):
-                filled = k < hazard
-                blocks.add(Rectangle(
-                    width=0.46, height=0.20, stroke_width=1.2,
-                    stroke_color=rcolor(rating) if filled else AMBER_DIM,
-                    fill_color=rcolor(rating) if filled else BG,
-                    fill_opacity=1 if filled else 0))
-            blocks.arrange(RIGHT, buff=0.12)
-            haz_l = left(T("HAZARD", 14, AMBER_DIM), TX, -1.2)
-            left(blocks, TX + 1.7, -1.2)
-
-            desc_lines = textwrap.wrap(desc, 38)
-            desc_m = VGroup(*[T(ln, 15, AMBER) for ln in desc_lines])
-            desc_m.arrange(DOWN, aligned_edge=LEFT, buff=0.12)
-            left(desc_m, TX, -1.78)
-
-            return VGroup(idx, idx_tot, name_m, source_m, source_v, div,
-                          thr_l, pill_g, haz_l, blocks, desc_m)
+        hint = T("UP/DOWN NAVIGATE      ENTER OPEN FILE      ESC CANCEL",
+                 16, AMBER_DIM).move_to([0, -3.52, 0])
 
         # =================================================================
         # SEQUENCE
         # =================================================================
-        # --- Intro ---
+        # --- Boot ---
         self.play(Create(frame), run_time=0.6)
-        self.play(LaggedStart(FadeIn(hl), FadeIn(hr), lag_ratio=0.2),
-                  Create(head_div), run_time=0.7)
+        self.play(LaggedStart(FadeIn(hl1), FadeIn(hl2), FadeIn(hr1), FadeIn(hr2),
+                              lag_ratio=0.15), Create(head_div), run_time=0.8)
+        self.add(title_glow)
+        self.play(FadeIn(title, scale=1.06), run_time=0.6)
+        self.play(FadeIn(subtitle), run_time=0.3)
+        self.play(title.animate.set_opacity(0.45), run_time=0.06)
+        self.play(title.animate.set_opacity(1.0), run_time=0.06)
 
-        big = T("WORST CITIES", 56, AMBER_BRT, weight=BOLD).move_to([0, 0.45, 0])
-        big_sub = T("13 LOCATIONS FLAGGED UNINHABITABLE", 18, AMBER_DIM).move_to([0, -0.45, 0])
-        self.play(Write(big), run_time=0.8)
-        self.play(FadeIn(big_sub, shift=UP * 0.15), run_time=0.4)
-        self.wait(0.7)
-        self.play(FadeOut(big, shift=UP * 0.2), FadeOut(big_sub), run_time=0.5)
-
-        # --- Reveal chrome ---
+        # --- Panels ---
+        self.play(Create(list_panel), Create(cover_panel), Create(prev_panel),
+                  run_time=0.7)
         self.play(
-            FadeIn(cover_bg), FadeIn(cover_frame), FadeIn(cov_l),
-            Create(foot_div), FadeIn(load_lbl),
-            FadeIn(bar_bg), run_time=0.6,
+            FadeIn(lp_h1), FadeIn(lp_h2), Create(lp_div),
+            FadeIn(cov_l), FadeIn(pv_h), FadeIn(label_mobs),
+            FadeIn(status_val), FadeIn(req), Create(bot_div),
+            FadeIn(cmd_prefix), FadeIn(bar_bg), FadeIn(hint),
+            run_time=0.6,
         )
-        self.add(cover_scan, bar_fill, pct, ticks, hint)
+        self.play(LaggedStart(*[FadeIn(r, shift=RIGHT * 0.1) for r in row_mobs],
+                              lag_ratio=0.08), run_time=1.6)
 
-        # --- City stream ---
-        prev = None
-        for i in range(N):
-            cover = build_cover(i)
-            text = build_text(i)
-            card = Group(cover, text)
-            if prev is None:
-                self.play(
-                    FadeIn(cover), FadeIn(text, shift=LEFT * 0.25),
-                    prog.animate.set_value((i + 1) / N),
-                    cur.animate.set_value(i),
-                    run_time=0.55,
-                )
-            else:
-                self.play(
-                    FadeOut(prev, shift=LEFT * 0.2),
-                    FadeIn(cover), FadeIn(text, shift=LEFT * 0.25),
-                    prog.animate.set_value((i + 1) / N),
-                    cur.animate.set_value(i),
-                    run_time=0.45,
-                )
-            self.wait(0.7)
-            prev = card
+        # add all dynamic / live mobjects
+        self.add(highlight, marker, cover_scan, cover_tag, file_tag,
+                 title_val, source_val, node_val, threat_val,
+                 cmd_dyn, status_dyn, load_dyn, bar_fill, pct)
+
+        # --- Step through every file with a per-file load ---
+        prev_cover = build_cover(0)
+        self.play(FadeIn(prev_cover), run_time=0.4)
+        self.play(prog.animate.set_value(1.0), run_time=0.6)
+        self.wait(0.25)
+
+        for i in range(1, N):
+            sel.set_value(i)
+            prog.set_value(0.0)
+            new_cover = build_cover(i)
+            self.play(FadeOut(prev_cover), FadeIn(new_cover), run_time=0.3)
+            self.play(prog.animate.set_value(1.0), run_time=0.55)
+            self.wait(0.22)
+            prev_cover = new_cover
 
         self.wait(0.3)
 
-        # --- Outro: PRESS START ---
-        self.play(
-            FadeOut(prev, shift=LEFT * 0.2),
-            Transform(load_lbl, left(T("ARCHIVE STREAM COMPLETE", 13, AMBER), -6.55, -2.92)),
-            run_time=0.5,
-        )
+        # --- PRESS START ---
         dim = Rectangle(width=14.6, height=8.2, stroke_width=0,
                         fill_color=BG, fill_opacity=0.0).set_z_index(10)
         self.add(dim)
-        press_bg = Rectangle(width=4.9, height=1.0, stroke_color=AMBER,
-                             stroke_width=2.5, fill_color=BG, fill_opacity=0.9
+        press_bg = Rectangle(width=6.6, height=1.15, stroke_color=AMBER,
+                             stroke_width=2.5, fill_color=BG, fill_opacity=0.92
                              ).move_to(ORIGIN).set_z_index(11)
-        press = T("PRESS START", 32, AMBER_BRT, weight=BOLD).move_to(ORIGIN).set_z_index(12)
-        self.play(dim.animate.set_fill(BG, opacity=0.6), run_time=0.5)
+        press = Text("PRESS START", font=FONT_TITLE, color=AMBER_BRT)
+        press.scale_to_fit_width(5.4).move_to(ORIGIN).set_z_index(12)
+        self.play(dim.animate.set_fill(BG, opacity=0.62), run_time=0.5)
         self.play(FadeIn(press_bg, scale=0.92), FadeIn(press, scale=0.92), run_time=0.45)
         for _ in range(3):
             self.play(press.animate.set_opacity(0.2), run_time=0.45,

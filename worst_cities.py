@@ -3,12 +3,13 @@
 Neon-green pixel-CRT terminal with sound. A ranked index of the 13 worst
 fictional cities (#13 top -> #01 bottom). A cursor steps through them, the
 selected row blinks, each file opens with a CRT "vwip" that masks the cover swap,
-a big 16:9 cover loads with a compact dossier, a worked segmented loading bar
-runs to 100%, and a LOADED stamp lands before moving on. Ends on #01 THE
-MEGASTRUCTURE.
+a big 16:9 cover loads with a per-city field note + dossier, a worked segmented
+loading bar runs to 100%, and a LOADED badge lands before moving on.
 
-Typography: TITLE_FONT (swappable) + VT323 (terminal body).
-Audio: synthesized bed + UI SFX in assets/audio/.
+Perf: per-city text is rebuilt only on transition (not every frame); the bar is
+frozen during holds. Keeps the render fast.
+
+Typography: VT323 body. Audio: synthesized bed + UI SFX in assets/audio/.
 Cover images: assets/covers/NN_*  (NN = rank, 01 = the #1 worst).
 
 Render:
@@ -31,11 +32,7 @@ BORDER      = "#1F8A45"
 PANEL_FILL  = "#08180F"
 COVER_FILL  = "#040D08"
 
-# Title typography (swap here): VT323 / "Press Start 2P" / BITSUMIS / TESLA / Xolonium
-TITLE_FONT   = "Press Start 2P"
-TITLE_WEIGHT = NORMAL
-TITLE_W      = 7.8
-FONT_BODY    = "VT323"
+FONT_BODY = "VT323"
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 COVER_DIR = os.path.join(BASE, "assets", "covers")
@@ -62,7 +59,6 @@ CITIES = [
     ("THE MEGASTRUCTURE", "BLAME!",             "UNMEASURABLE"),  # 01
 ]
 
-# one-line field description per city (same order as CITIES)
 DESCRIPTIONS = [
     "Every quiet house hides trafficking, cults or something worse.",
     "Chrome, corpos and crime - a city that sells you back to you.",
@@ -109,7 +105,6 @@ def neon(mob, color, widths=(9, 5, 2.5), ops=(0.05, 0.09, 0.16)):
     return g
 
 
-# loading "stutter": jumps and stalls instead of a smooth fill
 _LP = [(0, 0), (0.15, 0.30), (0.32, 0.33), (0.55, 0.70),
        (0.68, 0.72), (0.88, 0.95), (1, 1)]
 
@@ -129,9 +124,8 @@ class WorstCities(Scene):
         self.camera.background_color = BG
         N = len(CITIES)
 
-        def T(s, size, color=GREEN, font=FONT_BODY, weight=NORMAL, t2c=None):
-            return Text(s, font=font, font_size=size, color=color,
-                        weight=weight, t2c=t2c or {})
+        def T(s, size, color=GREEN):
+            return Text(s, font=FONT_BODY, font_size=size, color=color)
 
         def left(mob, x, y):
             mob.move_to([x, y, 0]).align_to([x, y, 0], LEFT)
@@ -141,102 +135,86 @@ class WorstCities(Scene):
             mob.move_to([x, y, 0]).align_to([x, y, 0], RIGHT)
             return mob
 
-        sel = ValueTracker(0)
-        prog = ValueTracker(0.0)
-        clock = ValueTracker(0.0)
-        clock.add_updater(lambda m, dt: m.increment_value(dt))
-
-        def cur_i():
-            return int(np.clip(round(sel.get_value()), 0, N - 1))
-
-        def cur():
-            return CITIES[cur_i()]
-
         def rank(i):
             return N - i
 
-        def cur_rank():
-            return rank(cur_i())
+        prog = ValueTracker(0.0)
+        clock = ValueTracker(0.0)
+        clock.add_updater(lambda m, dt: m.increment_value(dt))
 
         def blink_on(period=0.9, duty=0.62):
             return (clock.get_value() % period) < period * duty
 
         # =================================================================
-        # FRAME + HEADER + TITLE
+        # STATIC CHROME
         # =================================================================
         frame = Rectangle(width=13.9, height=7.55, stroke_color=BORDER,
                           stroke_width=1.5, fill_opacity=0)
         frame_glow = frame.copy().set_stroke(GREEN, 5, 0.10)
 
-        hl1 = left(T("WORST CITIES INDEX", 26, GREEN), -6.5, 3.46)
+        hl1 = left(T("WORST CITIES INDEX", 26), -6.5, 3.46)
         hl2 = left(T("LOCAL ACCESS TERMINAL // RANKED COUNTDOWN", 18, GREEN_DIM), -6.5, 3.18)
-        hr1 = right(T("ARCHIVE NODE 07", 26, GREEN), 6.5, 3.46)
+        hr1 = right(T("ARCHIVE NODE 07", 26), 6.5, 3.46)
         hr2 = right(T("LOCAL NODE // ACTIVE", 18, GREEN_DIM), 6.5, 3.18)
         head_div = Line([-6.55, 2.94, 0], [6.55, 2.94, 0], color=BORDER, stroke_width=1)
+        subtitle = T("// THE 13 WORST PLACES TO LIVE // RANKED 13 TO 01 //", 18, GREEN_DIM).move_to([0, 2.52, 0])
 
-        # no big title - the freed space shows a rotating per-city field note
-        subtitle = T("// THE 13 WORST PLACES TO LIVE // RANKED 13 TO 01 //",
-                     18, GREEN_DIM).move_to([0, 2.52, 0])
-
-        def make_desc():
-            m = T(f'"{DESCRIPTIONS[cur_i()]}"', 25, GREEN_BRT)
-            if m.width > 12.6:
-                m.scale_to_fit_width(12.6)
-            return m.move_to([0, 2.00, 0]).set_z_index(20)
-        desc = always_redraw(make_desc)
-
-        # =================================================================
-        # LEFT LIST PANEL
-        # =================================================================
         list_panel = Rectangle(width=6.5, height=4.02, stroke_color=BORDER,
                                stroke_width=1.5, fill_color=PANEL_FILL,
                                fill_opacity=0.5).move_to([-3.30, -0.52, 0])
-        lp_h1 = left(T("CITY FILES", 24, GREEN), -6.38, 1.28)
+        lp_h1 = left(T("CITY FILES", 24), -6.38, 1.28)
         lp_h2 = right(T("13 FILES FOUND", 17, GREEN_DIM), -0.22, 1.28)
         lp_div = Line([-6.45, 1.05, 0], [-0.1, 1.05, 0], color=BORDER, stroke_width=1)
 
         row_x, rate_x, row_y0, row_dy = -6.05, -0.30, 0.75, 0.255
-        row_mobs = []
+        rows = VGroup()
         for i, (name, source, rating) in enumerate(CITIES):
-            lbl = left(T(f"[{rank(i):02d}]  {name}", 20, GREEN), row_x, row_y0 - i * row_dy)
+            lbl = left(T(f"[{rank(i):02d}]  {name}", 20), row_x, row_y0 - i * row_dy)
             rt = right(T(rating, 20, rcolor(rating)), rate_x, row_y0 - i * row_dy)
-            row_mobs.append(VGroup(lbl, rt))
+            rows.add(VGroup(lbl, rt))
 
-        def make_highlight():
-            on = blink_on()
-            box = RoundedRectangle(width=6.28, height=0.25, corner_radius=0.03,
-                                   stroke_color=GREEN_BRT, stroke_width=1.8,
-                                   fill_color=GREEN, fill_opacity=0.22 if on else 0.05)
-            box.set_stroke(opacity=1.0 if on else 0.4)
-            box.move_to([-3.15, row_y0 - cur_i() * row_dy, 0])
-            k = 1.0 if on else 0.4
-            return neon(box, GREEN, widths=(7, 3), ops=(0.12 * k, 0.24 * k))
-        highlight = always_redraw(make_highlight)
-        marker = always_redraw(lambda: T(">", 22, GREEN_BRT).set_opacity(
-            1.0 if blink_on() else 0.2).move_to([-6.32, row_y0 - cur_i() * row_dy, 0]))
-
-        # =================================================================
-        # RIGHT - BIG 16:9 COVER
-        # =================================================================
+        # cover
         COVER_C = np.array([3.30, -0.08, 0])
         CBOX_W, CBOX_H = 6.5, 3.18
         cover_panel = Rectangle(width=CBOX_W, height=CBOX_H, stroke_color=BORDER,
                                 stroke_width=1.5, fill_color=COVER_FILL,
                                 fill_opacity=1).move_to(COVER_C)
-        top_strip = Rectangle(width=CBOX_W, height=0.36, stroke_width=0,
-                              fill_color=BG, fill_opacity=0.62
-                              ).move_to([COVER_C[0], COVER_C[1] + CBOX_H / 2 - 0.18, 0]).set_z_index(2)
+        top_strip = Rectangle(width=CBOX_W, height=0.36, stroke_width=0, fill_color=BG,
+                              fill_opacity=0.62).move_to([COVER_C[0], COVER_C[1] + CBOX_H / 2 - 0.18, 0]).set_z_index(2)
         bot_strip = top_strip.copy().move_to([COVER_C[0], COVER_C[1] - CBOX_H / 2 + 0.18, 0])
-        cover_tag = always_redraw(lambda: right(
-            T(f"{cur_rank():02d} // {cur()[0]}", 17, GREEN),
-            6.42, COVER_C[1] + CBOX_H / 2 - 0.18).set_z_index(5))
-        cov_status = right(T("ACTIVE / UNSTABLE", 15, RED), 6.42,
-                           COVER_C[1] - CBOX_H / 2 + 0.18).set_z_index(5)
-        cov_scale = left(T("SIGNAL // UNSTABLE", 14, GREEN_DIM), 0.2,
-                         COVER_C[1] - CBOX_H / 2 + 0.18).set_z_index(5)
+        cov_status = right(T("ACTIVE / UNSTABLE", 15, RED), 6.42, COVER_C[1] - CBOX_H / 2 + 0.18).set_z_index(5)
+        cov_scale = left(T("SIGNAL // UNSTABLE", 14, GREEN_DIM), 0.2, COVER_C[1] - CBOX_H / 2 + 0.18).set_z_index(5)
         cover_frame = Rectangle(width=CBOX_W, height=CBOX_H, stroke_color=GREEN,
                                 stroke_width=1.5, fill_opacity=0).move_to(COVER_C).set_z_index(6)
 
+        # dossier
+        doss = Rectangle(width=6.5, height=0.80, stroke_color=BORDER, stroke_width=1.5,
+                         fill_color=PANEL_FILL, fill_opacity=0.5).move_to([3.30, -2.12, 0])
+        d_lab = VGroup(
+            left(T("TITLE", 14, GREEN_DIM), 0.18, -1.93),
+            left(T("SOURCE", 14, GREEN_DIM), 0.18, -2.31),
+            left(T("THREAT", 14, GREEN_DIM), 3.75, -1.93),
+            left(T("RANK", 14, GREEN_DIM), 3.75, -2.31),
+        )
+
+        # bottom strip
+        bot_div = Line([-6.55, -2.72, 0], [6.55, -2.72, 0], color=BORDER, stroke_width=1)
+        cmd_prefix = left(T("CMD> ", 22), -6.5, -2.99)
+        cmd_x = -6.5 + cmd_prefix.width + 0.12
+        bar_l, bar_w, bar_y = -2.55, 6.95, -3.26
+        NSEG = 24
+        seg_w = bar_w / NSEG
+        bar_bg = Rectangle(width=bar_w + 0.06, height=0.21, stroke_color=GREEN_DIM,
+                           stroke_width=1, fill_opacity=0).move_to([bar_l + bar_w / 2, bar_y, 0])
+        hint = T("UP/DOWN NAVIGATE      ENTER OPEN FILE      ESC CANCEL", 16, GREEN_DIM).move_to([0, -3.54, 0])
+        scan = VGroup(*[
+            Line([-6.9, y, 0], [6.9, y, 0], color=BG, stroke_width=2, stroke_opacity=0.10)
+            for y in np.arange(-3.7, 3.7, 0.16)
+        ]).set_z_index(15)
+
+        # =================================================================
+        # PER-CITY (rebuilt only on transition) + COVER + LOADED
+        # =================================================================
         def build_cover(i):
             files = sorted(glob.glob(os.path.join(COVER_DIR, f"{rank(i):02d}_*")))
             files = [f for f in files if not f.lower().endswith((".md", ".txt"))]
@@ -246,77 +224,76 @@ class WorstCities(Scene):
                 if img.width > CBOX_W - 0.10:
                     img.scale_to_fit_width(CBOX_W - 0.10)
                 return img.move_to(COVER_C)
-            name = CITIES[i][0]
-            ph_name = T(name, 30, GREEN)
-            if ph_name.width > CBOX_W - 0.8:
-                ph_name.scale_to_fit_width(CBOX_W - 0.8)
-            ph = VGroup(ph_name, T("COVER PENDING", 16, GREEN_DIM)).arrange(DOWN, buff=0.2).move_to(COVER_C)
+            ph = VGroup(T(CITIES[i][0], 30), T("COVER PENDING", 16, GREEN_DIM)).arrange(DOWN, buff=0.2).move_to(COVER_C)
             return ph.set_z_index(1)
+
+        def build_info(i):
+            c = CITIES[i]
+            rk = rank(i)
+            yrow = row_y0 - i * row_dy
+            g = VGroup()
+
+            # blinking selection highlight (opacity-only updater, no rebuild)
+            box = RoundedRectangle(width=6.28, height=0.25, corner_radius=0.03,
+                                   stroke_color=GREEN_BRT, stroke_width=1.8,
+                                   fill_color=GREEN, fill_opacity=0.2).move_to([-3.15, yrow, 0])
+            glow = box.copy().set_stroke(GREEN, 6, 0.18).set_fill(opacity=0)
+            hlg = VGroup(glow, box)
+
+            def hl_up(m):
+                on = blink_on()
+                m[1].set_stroke(opacity=1.0 if on else 0.35)
+                m[1].set_fill(GREEN, 0.22 if on else 0.05)
+                m[0].set_stroke(GREEN, 6, 0.20 if on else 0.04)
+            hlg.add_updater(hl_up)
+            g.add(hlg)
+
+            mk = T(">", 22, GREEN_BRT).move_to([-6.32, yrow, 0])
+            mk.add_updater(lambda m: m.set_opacity(1.0 if blink_on() else 0.2))
+            g.add(mk)
+
+            # field note (where the title used to be)
+            dm = T(f'"{DESCRIPTIONS[i]}"', 25, GREEN_BRT)
+            if dm.width > 12.6:
+                dm.scale_to_fit_width(12.6)
+            g.add(dm.move_to([0, 2.0, 0]).set_z_index(20))
+
+            g.add(right(T(f"{rk:02d} // {c[0]}", 17), 6.42, COVER_C[1] + CBOX_H / 2 - 0.18).set_z_index(5))
+
+            g.add(left(T(c[0], 19, GREEN_BRT), 1.25, -1.93))
+            g.add(left(T(c[1], 18), 1.25, -2.31))
+            thr = T(c[2], 18, rcolor(c[2]))
+            g.add(left(neon(thr, rcolor(c[2]), widths=(4,), ops=(0.18,)), 4.65, -1.93))
+            g.add(left(T(f"#{rk:02d} / {N:02d}", 18), 4.65, -2.31))
+            g.add(left(T(f"LOADING  RANK {rk:02d}/{N:02d}", 18, GREEN_DIM), -6.5, -3.26))
+
+            ct = left(T(f"OPEN {slug(c[0])}", 22, GREEN_BRT), cmd_x, -2.99)
+            cur = Rectangle(width=0.17, height=0.30, stroke_width=0, fill_color=GREEN,
+                            fill_opacity=1).next_to(ct, RIGHT, buff=0.07)
+            cur.add_updater(lambda m: m.set_opacity(1.0 if blink_on(0.6) else 0.0))
+            g.add(ct, cur)
+            return g
 
         def make_loaded():
             txt = T("LOADED", 44, GREEN_BRT)
-            sub = T("ACCESS GRANTED", 15, GREEN)
+            sub = T("ACCESS GRANTED", 15)
             inner = VGroup(txt, sub).arrange(DOWN, buff=0.12)
             box = SurroundingRectangle(inner, color=GREEN, buff=0.34, stroke_width=4)
             corners = VGroup()
             Lc = 0.26
             for cd in [UL, UR, DL, DR]:
-                c = box.get_corner(cd)
+                cc = box.get_corner(cd)
                 hx = Lc if cd[0] < 0 else -Lc
                 vy = -Lc if cd[1] > 0 else Lc
-                corners.add(Line(c, c + np.array([hx, 0, 0]), color=GREEN_BRT, stroke_width=5))
-                corners.add(Line(c, c + np.array([0, vy, 0]), color=GREEN_BRT, stroke_width=5))
+                corners.add(Line(cc, cc + np.array([hx, 0, 0]), color=GREEN_BRT, stroke_width=5))
+                corners.add(Line(cc, cc + np.array([0, vy, 0]), color=GREEN_BRT, stroke_width=5))
             grp = VGroup(box, corners, inner).rotate(-6 * DEGREES).move_to(COVER_C + np.array([0, 0.05, 0]))
             return neon(grp, GREEN, widths=(9, 4), ops=(0.07, 0.16)).set_z_index(9)
 
-        # =================================================================
-        # RIGHT - COMPACT DOSSIER STRIP
-        # =================================================================
-        doss = Rectangle(width=6.5, height=0.80, stroke_color=BORDER,
-                         stroke_width=1.5, fill_color=PANEL_FILL,
-                         fill_opacity=0.5).move_to([3.30, -2.12, 0])
-        d_lab = VGroup(
-            left(T("TITLE", 14, GREEN_DIM), 0.18, -1.93),
-            left(T("SOURCE", 14, GREEN_DIM), 0.18, -2.31),
-            left(T("THREAT", 14, GREEN_DIM), 3.75, -1.93),
-            left(T("RANK", 14, GREEN_DIM), 3.75, -2.31),
-        )
-        d_title = always_redraw(lambda: left(T(cur()[0], 19, GREEN_BRT), 1.25, -1.93))
-        d_source = always_redraw(lambda: left(T(cur()[1], 18, GREEN), 1.25, -2.31))
-        d_threat = always_redraw(lambda: left(
-            neon(T(cur()[2], 18, rcolor(cur()[2])), rcolor(cur()[2]),
-                 widths=(5, 2.5), ops=(0.10, 0.22)), 4.65, -1.93))
-        d_rank = always_redraw(lambda: left(T(f"#{cur_rank():02d} / {N:02d}", 18, GREEN), 4.65, -2.31))
-
-        # =================================================================
-        # BOTTOM CMD STRIP + worked segmented loading bar
-        # =================================================================
-        bot_div = Line([-6.55, -2.72, 0], [6.55, -2.72, 0], color=BORDER, stroke_width=1)
-        cmd_prefix = left(T("CMD> ", 22, GREEN), -6.5, -2.99)
-        cmd_x = -6.5 + cmd_prefix.width + 0.12
-
-        def make_cmd():
-            txt = T(f"OPEN {slug(cur()[0])}", 22, GREEN_BRT)
-            blk = Rectangle(width=0.17, height=0.30, stroke_width=0, fill_color=GREEN,
-                            fill_opacity=1.0 if blink_on(0.6) else 0.0).next_to(txt, RIGHT, buff=0.07)
-            return left(neon(VGroup(txt, blk), GREEN, widths=(5, 2.5), ops=(0.08, 0.18)), cmd_x, -2.99)
-        cmd_dyn = always_redraw(make_cmd)
-        status_dyn = always_redraw(lambda: right(
-            T("ACCESS GRANTED" if prog.get_value() > 0.999 else "DECRYPTING ARCHIVE",
-              18, GREEN_BRT if prog.get_value() > 0.999 else GREEN_DIM), 6.5, -2.99))
-        load_dyn = always_redraw(lambda: left(
-            T(f"LOADING  RANK {cur_rank():02d}/{N:02d}", 18, GREEN_DIM), -6.5, -3.26))
-
-        bar_l, bar_w, bar_y = -2.55, 6.95, -3.26
-        NSEG = 30
-        seg_w = bar_w / NSEG
-        bar_bg = Rectangle(width=bar_w + 0.06, height=0.21, stroke_color=GREEN_DIM,
-                           stroke_width=1, fill_opacity=0).move_to([bar_l + bar_w / 2, bar_y, 0])
-
+        # --- segmented bar: dynamic during load, frozen during holds ---
         def make_bar():
             val = prog.get_value()
-            filled = val * NSEG
-            edge = int(filled)
+            edge = int(val * NSEG)
             blocks = VGroup()
             for k in range(NSEG):
                 cx = bar_l + (k + 0.5) * seg_w
@@ -330,23 +307,35 @@ class WorstCities(Scene):
                 else:
                     blocks.add(Rectangle(width=seg_w * 0.72, height=0.15, stroke_width=1,
                                          stroke_color=GREEN_DIM, fill_opacity=0).move_to([cx, bar_y, 0]))
-            fw = max(0.001, bar_w * val)
-            glow = Rectangle(width=fw, height=0.15, stroke_width=0, fill_opacity=0).move_to([bar_l + fw / 2, bar_y, 0])
-            return VGroup(neon(glow, GREEN, widths=(7,), ops=(0.18,)), blocks)
-        bar_fill = always_redraw(make_bar)
-        pct = always_redraw(lambda: right(
-            T(f"{int(round(prog.get_value()*100)):3d}%", 18, GREEN_BRT), 6.5, bar_y))
+            return blocks
 
-        hint = T("UP/DOWN NAVIGATE      ENTER OPEN FILE      ESC CANCEL",
-                 16, GREEN_DIM).move_to([0, -3.54, 0])
+        full_bar = VGroup(*[Rectangle(width=seg_w * 0.72, height=0.15, stroke_width=0,
+                                      fill_color=GREEN, fill_opacity=1).move_to([bar_l + (k + 0.5) * seg_w, bar_y, 0])
+                            for k in range(NSEG)])
+        bar_glow = Rectangle(width=bar_w, height=0.15, stroke_width=0, fill_opacity=0).move_to([bar_l + bar_w / 2, bar_y, 0])
+        bar_glow = neon(bar_glow, GREEN, widths=(7,), ops=(0.16,))
+        pct_full = right(T("100%", 18, GREEN_BRT), 6.5, bar_y)
+        status_full = right(T("ACCESS GRANTED", 18, GREEN_BRT), 6.5, -2.99)
 
-        scan = VGroup(*[
-            Line([-6.9, y, 0], [6.9, y, 0], color=BG, stroke_width=2, stroke_opacity=0.10)
-            for y in np.arange(-3.7, 3.7, 0.16)
-        ]).set_z_index(15)
+        dyn = {}
+
+        def show_dynamic():
+            b = always_redraw(make_bar)
+            p = always_redraw(lambda: right(T(f"{int(round(prog.get_value()*100)):3d}%", 18, GREEN_BRT), 6.5, bar_y))
+            s = right(T("DECRYPTING ARCHIVE", 18, GREEN_DIM), 6.5, -2.99)
+            dyn['b'], dyn['p'], dyn['s'] = b, p, s
+            self.add(b, p, s)
+
+        def freeze():
+            self.remove(dyn['b'], dyn['p'], dyn['s'])
+            self.add(bar_glow, full_bar, pct_full, status_full)
+
+        def unfreeze():
+            self.remove(bar_glow, full_bar, pct_full, status_full)
+            show_dynamic()
 
         # =================================================================
-        # SEQUENCE  (+ audio)
+        # SEQUENCE
         # =================================================================
         self.add(clock)
         self.add_sound(snd("ambient.wav"), gain=-15)
@@ -354,47 +343,39 @@ class WorstCities(Scene):
 
         self.add(frame_glow)
         self.play(Create(frame), run_time=0.6)
-        # code-style typewriter reveal of the header
         self.play(AddTextLetterByLetter(hl1), AddTextLetterByLetter(hr1), run_time=0.7)
         self.play(AddTextLetterByLetter(hl2), AddTextLetterByLetter(hr2),
                   Create(head_div), run_time=0.7)
         self.play(FadeIn(subtitle), run_time=0.4)
-        self.add(desc)
 
         self.play(Create(list_panel), Create(cover_panel), Create(cover_frame),
                   Create(doss), run_time=0.7)
         self.play(
             FadeIn(lp_h1), FadeIn(lp_h2), Create(lp_div),
-            FadeIn(top_strip), FadeIn(bot_strip), FadeIn(cov_scale),
-            FadeIn(cov_status), FadeIn(d_lab), Create(bot_div),
-            FadeIn(cmd_prefix), FadeIn(bar_bg), FadeIn(hint),
+            FadeIn(top_strip), FadeIn(bot_strip), FadeIn(cov_scale), FadeIn(cov_status),
+            FadeIn(d_lab), Create(bot_div), FadeIn(cmd_prefix), FadeIn(bar_bg), FadeIn(hint),
             run_time=0.6,
         )
-        self.play(LaggedStart(*[FadeIn(r, shift=RIGHT * 0.1) for r in row_mobs],
-                              lag_ratio=0.08), run_time=1.6)
-
-        self.add(scan, highlight, marker, cover_tag, d_title, d_source, d_threat, d_rank,
-                 cmd_dyn, status_dyn, load_dyn, bar_fill, pct)
+        self.play(LaggedStart(*[FadeIn(r, shift=RIGHT * 0.1) for r in rows], lag_ratio=0.08), run_time=1.6)
+        self.add(scan)
 
         def flicker_swap(swap_fn):
             self.add_sound(snd("transition.wav"), gain=-7)
-            ov = Rectangle(width=14.6, height=8.3, stroke_width=0,
-                           fill_color=BG, fill_opacity=0.0).set_z_index(30)
-            band = Rectangle(width=14.6, height=0.22, stroke_width=0,
-                             fill_color=GREEN_BRT, fill_opacity=0.0).move_to([0, 3.9, 0]).set_z_index(31)
+            ov = Rectangle(width=14.6, height=8.3, stroke_width=0, fill_color=BG, fill_opacity=0.0).set_z_index(30)
+            band = Rectangle(width=14.6, height=0.22, stroke_width=0, fill_color=GREEN_BRT,
+                             fill_opacity=0.0).move_to([0, 3.9, 0]).set_z_index(31)
             self.add(ov, band)
             self.play(ov.animate.set_fill(BG, opacity=0.96),
-                      band.animate.set_opacity(0.85).move_to([0, -3.9, 0]),
-                      run_time=0.13, rate_func=linear)
+                      band.animate.set_opacity(0.85).move_to([0, -3.9, 0]), run_time=0.13, rate_func=linear)
             swap_fn()
             self.play(ov.animate.set_fill(BG, opacity=0.1), run_time=0.06)
-            self.play(ov.animate.set_fill(BG, opacity=0.0),
-                      band.animate.set_opacity(0.0), run_time=0.12)
+            self.play(ov.animate.set_fill(BG, opacity=0.0), band.animate.set_opacity(0.0), run_time=0.12)
             self.remove(ov, band)
 
         def load_and_stamp(last=False):
             self.add_sound(snd("blip.wav"), gain=-9)
             self.play(prog.animate.set_value(1.0), run_time=1.25, rate_func=loadrf)
+            freeze()
             stamp = make_loaded()
             self.add_sound(snd("loaded.wav"), gain=-4)
             self.play(FadeIn(stamp, scale=1.7), run_time=0.16, rate_func=rush_from)
@@ -402,22 +383,27 @@ class WorstCities(Scene):
             self.wait(2.1 if last else 1.55)
             return stamp
 
+        # first city
         prev_cover = build_cover(0)
+        prev_info = build_info(0)
         self.play(FadeIn(prev_cover), run_time=0.4)
+        self.add(prev_info)
+        show_dynamic()
         prev_stamp = load_and_stamp()
 
         for i in range(1, N):
             new_cover = build_cover(i)
+            new_info = build_info(i)
             last = (i == N - 1)
 
-            def swap(old=prev_cover, stamp=prev_stamp, new=new_cover, idx=i):
-                self.remove(old, stamp)
-                self.add(new)
-                sel.set_value(idx)
+            def swap(oc=prev_cover, oi=prev_info, os_=prev_stamp, nc=new_cover, ni=new_info):
+                self.remove(oc, oi, os_)
+                self.add(nc, ni)
+                unfreeze()
                 prog.set_value(0.0)
             flicker_swap(swap)
 
-            prev_cover = new_cover
+            prev_cover, prev_info = new_cover, new_info
             prev_stamp = load_and_stamp(last=last)
 
         self.wait(1.6)

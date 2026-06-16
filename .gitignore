@@ -1,4 +1,5 @@
 /.venv/
+/.venv-hyperframes/
 /media/
 __pycache__/
 *.pyc

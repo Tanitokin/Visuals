@@ -296,7 +296,7 @@ class YellowstoneIntro(MovingCameraScene):
         self.play(FadeIn(dpanel, shift=UP * 0.1), FadeIn(dttl), FadeIn(dsub), run_time=0.45)
 
         decrypting = [True]
-        hex_lines = VGroup(*[hexT(rand_hex(13), 15, DIM) for _ in range(5)])
+        hex_lines = VGroup(*[hexT(rand_hex(10), 15, DIM) for _ in range(5)])
         for k, x in enumerate(hex_lines):
             left(x, -1.7, 0.66 - k * 0.32)
 
@@ -304,7 +304,7 @@ class YellowstoneIntro(MovingCameraScene):
             if decrypting[0]:
                 i = hex_lines.submobjects.index(m)
                 random.seed(int(T0() * 20) * 7 + i)
-                m.become(left(hexT(rand_hex(13), 15, DIM), -1.7, 0.66 - i * 0.32))
+                m.become(left(hexT(rand_hex(10), 15, DIM), -1.7, 0.66 - i * 0.32))
         for x in hex_lines:
             x.add_updater(hex_upd)
         self.add(hex_lines)
@@ -329,82 +329,91 @@ class YellowstoneIntro(MovingCameraScene):
             self.add_sound(snd("ui_tick.wav"), gain=-6)
             self.play(prog.animate.set_value(step), auth[k].animate.set_opacity(1), run_time=0.8, rate_func=smooth)
 
-        decrypting[0] = False; phase.set_value(3)
+        decrypting[0] = False
+        phase.set_value(3)
         for x in hex_lines:
             x.clear_updaters()
         self.add_sound(snd("ui_unlock.wav"), gain=-2)
         self.add_sound(snd("boom.wav"), gain=-3)
+        # full clean takeover: drop every interface element behind the dossier
+        self.remove(hl, hover, marker, status, rec_dot, rec_tc, coords, sigpc,
+                    data_lines, bottom_wave)
         self.play(FadeOut(dpanel), FadeOut(dttl), FadeOut(dsub), FadeOut(hex_lines),
                   FadeOut(pct), FadeOut(bar_fill), FadeOut(bar_bg), FadeOut(auth), FadeOut(warn2),
-                  FadeOut(retic), rows.animate.set_opacity(0.18), self.flash(WHITE, 0.5), run_time=0.5)
+                  FadeOut(retic), FadeOut(header), FadeOut(idx_h), FadeOut(list_div),
+                  FadeOut(rows), FadeOut(grid), self.flash(WHITE, 0.5), run_time=0.5)
 
         # =================================================================
-        # BEAT 4: YELLOWSTONE DOSSIER (image + coverage + 7 levels)
+        # BEAT 4: YELLOWSTONE DOSSIER
         # =================================================================
-        self.remove(hl, hover, marker, sig_wave, radar_sweep, blips_a)
-        dpan = Rectangle(width=12.4, height=6.0, stroke_color=LINE, stroke_width=1.5,
-                         fill_color=PANEL, fill_opacity=0.97).move_to([0, -0.15, 0])
+        dpan = Rectangle(width=13.3, height=7.1, stroke_color=LINE, stroke_width=1.5,
+                         fill_color=PANEL, fill_opacity=1).move_to(ORIGIN)
         dpan_glow = dpan.copy().set_stroke(WHITE, 5, 0.12)
-        d_title = left(T("YELLOWSTONE", 34, WHITE, weight="BOLD"), -5.9, 2.2)
-        d_sub = left(T("ANOMALY DOSSIER // FILE 023 // DECLASSIFIED", 15, RED), -5.9, 1.72)
-        d_tdiv = Line([-5.95, 1.5, 0], [5.95, 1.5, 0], color=LINE, stroke_width=1)
+        d_title = left(T("YELLOWSTONE", 36, WHITE, weight="BOLD"), -6.2, 2.78)
+        d_sub = left(T("ANOMALY DOSSIER  //  FILE 023  //  DECLASSIFIED", 15, RED), -6.2, 2.3)
+        d_tdiv = Line([-6.3, 2.05, 0], [6.3, 2.05, 0], color=LINE, stroke_width=1)
         self.play(FadeIn(dpan_glow), FadeIn(dpan), run_time=0.4)
-        self.play(AddTextLetterByLetter(d_title), run_time=0.5)
+        self.play(AddTextLetterByLetter(d_title), run_time=0.45)
         self.play(FadeIn(d_sub), Create(d_tdiv), run_time=0.3)
 
-        # --- image (left) ---
-        ibx, iby, IW, IH = -3.4, -0.55, 4.6, 3.2
-        iframe = Rectangle(width=IW, height=IH, stroke_color=AMBER, stroke_width=1.5, fill_color="#070A0D", fill_opacity=1).move_to([ibx, iby, 0])
+        # --- image (upper-left) ---
+        IW, IH = 4.9, 2.9
+        ibx, iby = -3.75, 0.4
+        iframe = Rectangle(width=IW, height=IH, stroke_color=AMBER, stroke_width=1.5,
+                           fill_color="#070A0D", fill_opacity=1).move_to([ibx, iby, 0])
         files = [f for f in glob.glob(os.path.join(BASE, "assets", "yellowstone.*"))
                  if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))]
         if files:
             img = ImageMobject(files[0])
-            img.scale_to_fit_height(IH - 0.12)
-            if img.width > IW - 0.12:
-                img.scale_to_fit_width(IW - 0.12)
-            img.move_to([ibx, iby, 0])
-            picture = img
+            img.scale_to_fit_height(IH - 0.14)
+            if img.width > IW - 0.14:
+                img.scale_to_fit_width(IW - 0.14)
+            picture = img.move_to([ibx, iby, 0])
         else:
-            rings = VGroup(*[Ellipse(width=(IW - 0.6) * (1 - j * 0.16), height=(IH - 0.6) * (1 - j * 0.18),
-                            stroke_color=c, stroke_width=2.5, stroke_opacity=0.55)
-                            for j, c in enumerate(["#7a5a20", "#5a6a30", "#2f6a55", "#2a4a6a"])]).move_to([ibx, iby, 0])
-            picture = VGroup(rings, T("VISUAL FEED // DROP assets/yellowstone.jpg", 12, DIM).move_to([ibx, iby - IH/2 + 0.25, 0]))
-        ilab = left(T("VISUAL FEED", 12, DIM), ibx - IW/2 + 0.12, iby + IH/2 - 0.18)
-        istat = right(T("THERMAL", 12, RED), ibx + IW/2 - 0.12, iby + IH/2 - 0.18)
-        scanbar = Rectangle(width=IW, height=0.05, stroke_width=0, fill_color=AMBER, fill_opacity=0.8).move_to([ibx, iby + IH/2, 0])
-        self.add(picture, iframe, ilab, istat)
+            bg_im = Rectangle(width=IW, height=IH, stroke_width=0, fill_color="#0A0E12", fill_opacity=1).move_to([ibx, iby, 0])
+            rings = VGroup(*[Ellipse(width=(IW - 0.5) * (1 - j * 0.17), height=(IH - 0.5) * (1 - j * 0.19),
+                            stroke_color=c, stroke_width=3, stroke_opacity=0.7)
+                            for j, c in enumerate(["#d8ad3e", "#83b24c", "#2fa07c", "#2c6cb0"])]).move_to([ibx, iby + 0.1, 0])
+            picture = VGroup(bg_im, rings,
+                             T("VISUAL FEED // DROP assets/yellowstone.jpg", 12, DIM).move_to([ibx, iby - IH/2 + 0.26, 0]))
+        topbar = Rectangle(width=IW, height=0.3, stroke_width=0, fill_color="#10151C", fill_opacity=1).move_to([ibx, iby + IH/2 - 0.15, 0])
+        ilab = left(T("VISUAL FEED", 12, DIM), ibx - IW/2 + 0.15, iby + IH/2 - 0.15)
+        istat = right(T("THERMAL", 12, RED), ibx + IW/2 - 0.15, iby + IH/2 - 0.15)
+        scanbar = Rectangle(width=IW, height=0.05, stroke_width=0, fill_color=AMBER, fill_opacity=0.85).move_to([ibx, iby + IH/2, 0]).set_z_index(8)
+        self.add(picture, iframe, topbar, ilab, istat)
         self.add_sound(snd("ui_scan.wav"), gain=-8)
         self.play(scanbar.animate.move_to([ibx, iby - IH/2, 0]), FadeIn(picture, run_time=0.1), run_time=0.55, rate_func=linear)
         self.remove(scanbar)
 
-        # --- coverage stats (right-top) ---
+        # --- coverage (upper-right) ---
+        cov_h = left(T("// COVERAGE", 14, RED), 0.6, 1.55)
         cstats = VGroup()
         for k, (lab, val) in enumerate(COVERAGE):
-            yk = 1.05 - k * 0.34
-            cstats.add(VGroup(left(T(lab, 14, DIM), 0.4, yk), right(T(val, 14, WHITE), 5.8, yk)))
-        self.play(LaggedStart(*[FadeIn(c, shift=RIGHT*0.05) for c in cstats], lag_ratio=0.08), run_time=0.7)
+            yk = 1.18 - k * 0.32
+            cstats.add(VGroup(left(T(lab, 14, DIM), 0.6, yk), right(T(val, 14, WHITE), 6.0, yk)))
+        self.play(FadeIn(cov_h), LaggedStart(*[FadeIn(c, shift=RIGHT * 0.05) for c in cstats], lag_ratio=0.07), run_time=0.7)
 
-        # --- threat levels 1-7 (bottom, animated bars) ---
-        lv_y0, lv_dy, lv_x, lv_bx, lv_bw = -1.45, 0.275, -5.85, -2.7, 4.6
+        # --- threat levels 1-7 (full-width bottom band, animated bars) ---
+        lv_head = left(T("// THREAT LEVELS  [ 1 - 7 ]", 14, RED), -6.2, -1.2)
+        self.play(FadeIn(lv_head), run_time=0.25)
+        lv_y0, lv_dy, lv_lx, lv_bx, lv_bw = -1.55, 0.265, -6.2, -1.3, 7.1
         levels = VGroup()
         bar_anims = []
         for k, (lv, lab, sev) in enumerate(LEVELS):
             yk = lv_y0 - k * lv_dy
             col = AMBER if sev < 0.7 else RED
-            levels.add(left(T(lv, 13, AMBER), lv_x, yk), left(T(lab, 13, WHITE if sev < 0.92 else RED), lv_x + 1.15, yk))
-            track = Rectangle(width=lv_bw, height=0.13, stroke_color=LINE, stroke_width=1, fill_opacity=0).move_to([lv_bx + lv_bw/2, yk, 0])
-            fillr = Rectangle(width=0.001, height=0.13, stroke_width=0, fill_color=col, fill_opacity=0.9).move_to([lv_bx, yk, 0])
+            levels.add(left(T(lv, 13, AMBER), lv_lx, yk),
+                       left(T(lab, 13, WHITE if sev < 0.92 else RED), lv_lx + 1.05, yk))
+            track = Rectangle(width=lv_bw, height=0.12, stroke_color=LINE, stroke_width=1, fill_opacity=0).move_to([lv_bx + lv_bw / 2, yk, 0])
+            fillr = Rectangle(width=0.001, height=0.12, stroke_width=0, fill_color=col, fill_opacity=0.9).move_to([lv_bx, yk, 0])
             levels.add(track)
             self.add(track, fillr)
-            bar_anims.append((fillr, sev, yk, col))
+            bar_anims.append((fillr, sev, yk))
         self.add(levels)
-        for fillr, sev, yk, col in bar_anims:
+        for fillr, sev, yk in bar_anims:
             self.add_sound(snd("ui_tick.wav"), gain=-9)
-            self.play(fillr.animate.stretch_to_fit_width(lv_bw * sev).move_to([lv_bx + lv_bw*sev/2, yk, 0]),
-                      run_time=0.18, rate_func=smooth)
-
-        d_wave = waveform(0.4, 5.8, -2.05, 0.12, AMBER, sw=1.2)
-        self.add(d_wave)
+            self.play(fillr.animate.stretch_to_fit_width(lv_bw * sev).move_to([lv_bx + lv_bw * sev / 2, yk, 0]),
+                      run_time=0.16, rate_func=smooth)
         self.wait(1.6)
 
     def flash(self, color=RED, op=0.28):

@@ -10,7 +10,7 @@ accent for the active signal. Motion: smooth constant orbit, eased pulse travel,
 no camera shake.
 
 Render:
-    manim -pqh orbital_uplink.py OrbitalUplink
+    manim -pqh scenes/orbital_uplink.py OrbitalUplink
 """
 
 import numpy as np

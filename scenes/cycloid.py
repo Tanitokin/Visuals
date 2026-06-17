@@ -4,7 +4,7 @@ A circle rolls without slipping along a straight number line. A bright dot
 marked on its rim traces out a cycloid curve as the circle rotates.
 
 Render:
-    manim -pqh cycloid.py CycloidScene
+    manim -pqh scenes/cycloid.py CycloidScene
 """
 
 import numpy as np

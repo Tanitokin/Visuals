@@ -5,9 +5,13 @@ mechanical clicks and an ACCESS GRANTED at 100%, plus a blinking prompt. Copy
 this file and edit to start a new CRT-terminal scene.
 
 Render:
-    manim -pqh --fps 30 template_scene.py CRTTemplate
+    manim -pqh --fps 30 scenes/template_scene.py CRTTemplate
 """
 
+import os
+import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # find crt_style next to this file
 from crt_style import *
 
 

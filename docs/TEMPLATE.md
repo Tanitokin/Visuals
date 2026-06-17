@@ -8,13 +8,16 @@ loading bars, blinking cursors, and synthesized mechanical SFX + CRT hum.
 
 | File | What it is |
 |------|------------|
-| `crt_style.py` | **The toolkit.** Palette, fonts, helpers, CRT ambience, segmented bar, `CRTScene` base class. Import this. |
-| `template_scene.py` | **Minimal starter.** Copy it to begin a new scene (`CRTTemplate`). |
-| `boot.py` | Reference: a boot / loading screen (`WorstCitiesBoot`). |
-| `worst_cities.py` | Reference: a ranked countdown menu with covers (`WorstCities`). |
+| `scenes/crt_style.py` | **The toolkit.** Palette, fonts, helpers, CRT ambience, segmented bar, `CRTScene` base class. Import this. |
+| `scenes/template_scene.py` | **Minimal starter.** Copy it to begin a new scene (`CRTTemplate`). |
+| `scenes/boot.py` | Reference: a boot / loading screen (`WorstCitiesBoot`). |
+| `scenes/worst_cities.py` | Reference: a ranked countdown menu with covers (`WorstCities`). |
 | `assets/fonts/` | Fonts (VT323, Press Start 2P, Oxanium, Xolonium, TESLA, Share Tech Mono…). |
 | `assets/audio/` | Synthesized SFX + `crt_hum.wav` background. |
 | `assets/covers/` | Per-item cover images (used by `worst_cities.py`). |
+
+> New scenes live in `scenes/` (next to `crt_style.py`). `template_scene.py` adds
+> its own folder to `sys.path` so `from crt_style import *` just works.
 
 ## Quick start
 
@@ -29,7 +32,7 @@ class MyScene(CRTScene):
         self.wait(1)
 ```
 
-Render: `./.venv/bin/manim -pqh --fps 30 my_scene.py MyScene`
+Render: `./.venv/bin/manim -pqh --fps 30 scenes/my_scene.py MyScene`
 
 ## What `CRTScene` gives you
 

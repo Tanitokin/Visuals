@@ -7,7 +7,7 @@ segmented loading bar fills and hits a CLICK + ACCESS chime + flash at 100%,
 then OPENING WORST CITIES DATABASE -> PRESS ENTER TO CONTINUE.
 
 Render:
-    manim -pqh --fps 30 boot.py WorstCitiesBoot
+    manim -pqh --fps 30 scenes/boot.py WorstCitiesBoot
 """
 
 import os
@@ -24,7 +24,7 @@ BORDER    = "#1F8A45"
 FONT_TITLE = "Press Start 2P"
 FONT_BODY  = "VT323"
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # repo root (file lives in scenes/)
 AUDIO_DIR = os.path.join(BASE, "assets", "audio")
 
 

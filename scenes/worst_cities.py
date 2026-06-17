@@ -13,7 +13,7 @@ Typography: VT323 body. Audio: synthesized bed + UI SFX in assets/audio/.
 Cover images: assets/covers/NN_*  (NN = rank, 01 = the #1 worst).
 
 Render:
-    manim -pqh --fps 30 worst_cities.py WorstCities
+    manim -pqh --fps 30 scenes/worst_cities.py WorstCities
 """
 
 import glob
@@ -34,7 +34,7 @@ COVER_FILL  = "#040D08"
 
 FONT_BODY = "VT323"
 
-BASE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # repo root (file lives in scenes/)
 COVER_DIR = os.path.join(BASE, "assets", "covers")
 AUDIO_DIR = os.path.join(BASE, "assets", "audio")
 

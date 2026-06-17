@@ -40,7 +40,7 @@ FONT_BODY  = "VT323"
 FONT_TITLE = "VT323"
 
 # --- Asset paths ----------------------------------------------------------
-BASE = os.path.dirname(os.path.abspath(__file__))
+BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # repo root (file lives in scenes/)
 AUDIO_DIR = os.path.join(BASE, "assets", "audio")
 COVER_DIR = os.path.join(BASE, "assets", "covers")
 

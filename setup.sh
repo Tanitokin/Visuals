@@ -28,4 +28,4 @@ cp -f assets/fonts/*.ttf "$HOME/.local/share/fonts/" 2>/dev/null || true
 cp -f assets/fonts/*.otf "$HOME/.local/share/fonts/" 2>/dev/null || true
 fc-cache -f "$HOME/.local/share/fonts" >/dev/null 2>&1 || true
 
-echo "[setup] done. Render with: ./.venv/bin/manim -pqh --fps 30 boot.py WorstCitiesBoot"
+echo "[setup] done. Render with: ./.venv/bin/manim -pqh --fps 30 scenes/boot.py WorstCitiesBoot"

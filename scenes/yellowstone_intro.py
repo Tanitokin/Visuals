@@ -48,18 +48,6 @@ LOCATIONS = [
 ]
 TARGET = 12
 
-BERG = [
-    ("SURFACE LAYER", ["GEOTHERMAL ANOMALIES", "MISSING PERSONS: 1,100+"]),
-    ("LEVEL 01", ["UNIDENTIFIED WILDLIFE", "BACKCOUNTRY DISAPPEARANCES"]),
-    ("LEVEL 02", ["CAVE SYSTEM REPORTS", "UNLOGGED EXPEDITIONS"]),
-    ("LEVEL 03", ["RESTRICTED SECTOR 4", "WITNESS STATEMENTS SEALED"]),
-    ("LEVEL 04", ["[ REDACTED ]", "ANOMALOUS SIGNALS"]),
-    ("LEVEL 05", ["CLASSIFIED // EYES ONLY", "DO NOT RELEASE"]),
-    ("LEVEL 06", ["██████  ████", "CASE STATUS: BURIED"]),
-    ("LEVEL 07", ["[ DATA CORRUPTED ]", "██████████"]),
-    ("▼  DEPTH UNKNOWN", ["...", "███  ████  ██"]),
-]
-
 
 def mono(s, size, color=WHITE, opacity=1.0):
     return Text(s, font=MONO, font_size=size, color=color).set_opacity(opacity)
@@ -113,6 +101,7 @@ class YellowstoneIntro(MovingCameraScene):
         clock.add_updater(lambda m, dt: m.increment_value(dt))
         self.add(clock)
         phase = ValueTracker(0)
+        N = len(LOCATIONS)
 
         grid = VGroup(*[Line([-7.3, y, 0], [7.3, y, 0], color=GRID, stroke_width=1)
                         for y in np.arange(-3.8, 3.9, 0.34)]).set_z_index(-5)
@@ -211,23 +200,25 @@ class YellowstoneIntro(MovingCameraScene):
         self.play(LaggedStart(*[FadeIn(r, shift=RIGHT * 0.06) for r in rows], lag_ratio=0.03), run_time=0.9)
         self.add(hl, hover, marker, status, scan_status, sweep, rec_dot, rec_tc)
 
-        # --- BEAT 1: scanning ---
+        # --- BEAT 1: scanning spins fast & random, then decelerates onto target ---
         random.seed(7)
-        jumps = [3, 9, 1, 14, 6, 11, 4, 15, 8, 2]
-        win_anims = [Succession(FadeIn(w, scale=1.08, run_time=0.16), Wait(0.28), FadeOut(w, run_time=0.16))
+        fast = [random.randint(0, N - 1) for _ in range(16)]
+        approach = [TARGET - 4, TARGET + 3, TARGET - 2, TARGET + 1, TARGET]
+        seq = fast + approach
+        rts = [0.05] * len(fast) + [0.13, 0.2, 0.3, 0.45, 0.62]
+        jump_anims = [sel.animate(run_time=rt, rate_func=(linear if k < len(fast) else smooth)).set_value(idx)
+                      for k, (idx, rt) in enumerate(zip(seq, rts))]
+        win_anims = [Succession(FadeIn(w, scale=1.08, run_time=0.16), Wait(0.3), FadeOut(w, run_time=0.16))
                      for w in windows]
-        for j in jumps[:4]:
-            self.add_sound(snd("blip.wav"), gain=-14)
-        self.play(
-            LaggedStart(*win_anims, lag_ratio=0.16),
-            Succession(*[sel.animate(run_time=0.3).set_value(j) for j in jumps]),
-            run_time=3.0,
-        )
+        # ticks that follow the decelerating cadence (scheduled by time offset)
+        t_fast = sum(rts[:len(fast)])
+        for off in [0.0, 0.25, 0.5, t_fast, t_fast + 0.13, t_fast + 0.33, t_fast + 0.63, t_fast + 1.08]:
+            self.add_sound(snd("tick.wav"), time_offset=off, gain=-7)
+        self.play(LaggedStart(*win_anims, lag_ratio=0.18), Succession(*jump_anims))
 
         # --- BEAT 2: lock on YELLOWSTONE (reticle snaps in) ---
         self.add_sound(snd("access.wav"), gain=-4)
         phase.set_value(1)
-        self.play(sel.animate.set_value(TARGET), run_time=0.25)
         rows[TARGET][2].become(left(mono("[●]", 16, RED), lx + 3.7, ly0 - TARGET * ldy))
         retic = neon(brackets(rows[TARGET], RED, ear=0.22), RED, widths=(8,), ops=(0.28,)).set_z_index(6)
         warn = mono("ANOMALY DETECTED", 30, RED).move_to([1.6, 0.4, 0])
@@ -296,80 +287,24 @@ class YellowstoneIntro(MovingCameraScene):
         self.play(self.flash(WHITE, 0.55), run_time=0.4)
 
         # =================================================================
-        # BEAT 4: iceberg descent
+        # FINAL: reveal the episode title
         # =================================================================
         self.remove(hl, hover, marker, status, rec_dot, rec_tc, scan_status, sweep)
         self.play(
             FadeOut(header), FadeOut(idx_h), FadeOut(list_div), FadeOut(rows),
-            FadeOut(grid), FadeOut(retic),
-            FadeOut(dpanel), FadeOut(dttl), FadeOut(dsub), FadeOut(unlocked),
+            FadeOut(retic), FadeOut(dpanel), FadeOut(dttl), FadeOut(dsub),
+            FadeOut(unlocked),
             run_time=0.5,
         )
-
-        berg = VGroup()
-        top, gap = 2.4, 3.4
-        apex_y = top - len(BERG) * gap - 1.0
-        body_wedge = Polygon([-5.5, top + 0.3, 0], [5.5, top + 0.3, 0], [0.7, apex_y, 0], [-0.7, apex_y, 0],
-                             stroke_width=0, fill_color="#0B1118", fill_opacity=0.6).set_z_index(-3)
-        edgeL = Line([-5.5, top + 0.3, 0], [-0.7, apex_y, 0], color=LINE, stroke_width=1.5, stroke_opacity=0.5)
-        edgeR = Line([5.5, top + 0.3, 0], [0.7, apex_y, 0], color=LINE, stroke_width=1.5, stroke_opacity=0.5)
-        waterline = DashedLine([-7, top + 0.3, 0], [7, top + 0.3, 0], color=AMBER, stroke_width=1.5, dash_length=0.18)
-        berg.add(body_wedge, edgeL, edgeR, waterline)
-
-        title = Text("YELLOWSTONE", font=TITLE, weight=BOLD, color=WHITE).scale_to_fit_width(5.6)
-        title.move_to([0, top + 0.95, 0])
-
-        strata = []   # (group, y) for proximity reveal
-        for k, (lvl, items) in enumerate(BERG):
-            y = top - k * gap
-            base = max(0.12, 1.0 - k * 0.10)
-            col = WHITE if k < 4 else RED if k < 7 else "#7a2a2c"
-            div = Line([-6.6, y + 0.55, 0], [6.6, y + 0.55, 0], color=LINE, stroke_width=1, stroke_opacity=0.4 * base)
-            lab = left(mono(lvl, 18, AMBER), -6.4, y + 0.2)
-            body = VGroup(*[mono(it, 22 if k < 5 else 20, col) for it in items]).arrange(DOWN, aligned_edge=LEFT, buff=0.22)
-            left(body, -6.4, y - 0.4)
-            depth = left(mono(f"-{k*440:04d} M", 14, DIM), 4.6, y + 0.2)
-            g = VGroup(div, lab, body, depth)
-            berg.add(g)
-            strata.append((g, y, base))
-
-        # drifting particles (depth / life)
-        rng = np.random.default_rng(4)
-        parts = VGroup(*[Dot(radius=rng.uniform(0.012, 0.03), color=WHITE,
-                            fill_opacity=rng.uniform(0.05, 0.22)).move_to(
-                            [rng.uniform(-6.5, 6.5), rng.uniform(apex_y, top), 0]) for _ in range(70)])
-        parts.set_z_index(-2)
-
-        # camera-following progressive darkening (into the dark)
-        start_y = 0.0
-        dark = Rectangle(width=15, height=9, stroke_width=0, fill_color="#000000", fill_opacity=0).set_z_index(40)
-
-        def dark_upd(m):
-            cy = cam.get_center()[1]
-            m.move_to(cam.get_center())
-            m.set_opacity(float(np.clip((start_y - cy) / (start_y - (apex_y + 2.0)) * 0.75, 0, 0.75)))
-        dark.add_updater(dark_upd)
-
-        # proximity reveal: each stratum brightens as the camera nears it
-        def make_reveal(g, gy, base):
-            def upd(m):
-                d = abs(cam.get_center()[1] - gy)
-                m.set_opacity(float(np.clip(base * (1.2 - d / 6.0), 0.0, base)))
-            return upd
-        for g, gy, base in strata:
-            g.add_updater(make_reveal(g, gy, base))
-
-        self.add(berg, parts, dark, title)
-        self.add_sound(snd("transition.wav"), gain=-9)
-        self.play(FadeIn(title, shift=DOWN * 0.2), waterline.animate.set_opacity(1), run_time=0.7)
-        self.add_sound(snd("riser.wav"), gain=-12)
-        self.play(
-            cam.animate.move_to([0, apex_y + 2.5, 0]).set_height(9.2),
-            title.animate.shift(UP * 1.2).set_opacity(0.0),
-            run_time=5.2, rate_func=smooth,
-        )
-        self.play(cam.animate.move_to([0, apex_y + 1.0, 0]), run_time=1.1, rate_func=smooth)
-        self.wait(0.7)
+        et = Text("YELLOWSTONE", font=TITLE, weight=BOLD, color=WHITE).scale_to_fit_width(7.4)
+        et.move_to([0, 0.45, 0])
+        eglow = et.copy().set_stroke(WHITE, 9, 0.12).set_fill(opacity=0)
+        eline = Line(et.get_left(), et.get_right(), color=RED, stroke_width=2.5).next_to(et, DOWN, buff=0.35)
+        esub = mono("ANOMALY FILE 023 // DECLASSIFIED", 20, RED).next_to(eline, DOWN, buff=0.3)
+        self.add_sound(snd("transition.wav"), gain=-7)
+        self.play(FadeIn(eglow), FadeIn(et, scale=1.04), GrowFromCenter(eline), run_time=0.7)
+        self.play(FadeIn(esub, shift=UP * 0.1), run_time=0.5)
+        self.wait(1.6)
 
     # --- helper: full-frame flash that follows the camera ---
     def flash(self, color=RED, op=0.28):

@@ -42,7 +42,9 @@ LOCATIONS = [
     "HIMALAYAS", "AMAZON BASIN", "AUSTRALIA", "PACIFIC ISLANDS", "JAPAN",
     "ANTARCTICA", "ALASKA", "APPALACHIA", "SIBERIA", "CONGO BASIN",
     "MARIANA TRENCH", "PATAGONIA", "YELLOWSTONE", "GREENLAND",
-    "MOJAVE DESERT", "SCOTTISH HIGHLANDS",
+    "MOJAVE DESERT", "SCOTTISH HIGHLANDS", "NORWEGIAN FJORDS",
+    "LOUISIANA BAYOU", "GOBI DESERT", "NEW GUINEA", "ICELAND",
+    "CARPATHIANS",
 ]
 TARGET = 12
 
@@ -75,6 +77,17 @@ def right(mob, x, y):
 
 def rand_hex(n):
     return " ".join("".join(random.choice("0123456789ABCDEF") for _ in range(2)) for _ in range(n))
+
+
+def neon(mob, color, widths=(7, 3), ops=(0.10, 0.22)):
+    """Soft stroke-halo glow around a mobject."""
+    g = VGroup()
+    for w, o in zip(widths, ops):
+        h = mob.copy().set_stroke(color, width=w, opacity=o)
+        h.set_fill(opacity=0)
+        g.add(h)
+    g.add(mob)
+    return g
 
 
 def brackets(target, color=RED, sw=2.5, ear=0.18, buff=0.12):
@@ -136,10 +149,19 @@ class YellowstoneIntro(MovingCameraScene):
         list_div = Line([-3.0, 3.2, 0], [-3.0, -3.7, 0], color=LINE, stroke_width=1.2)
 
         sel = ValueTracker(0)
-        hl = always_redraw(lambda: Rectangle(
-            width=4.3, height=0.27, stroke_width=0, fill_color=RED, fill_opacity=0.16
-        ).move_to([lx + 2.0, ly0 - int(sel.get_value()) * ldy, 0]))
-        marker = always_redraw(lambda: left(mono("▶", 14, RED), -6.98, ly0 - int(sel.get_value()) * ldy))
+
+        def make_hl():
+            box = RoundedRectangle(width=4.35, height=0.3, corner_radius=0.04,
+                                   stroke_color=RED, stroke_width=1.6, fill_color=RED,
+                                   fill_opacity=0.18).move_to([lx + 2.0, ly0 - int(sel.get_value()) * ldy, 0])
+            return neon(box, RED, widths=(11, 5), ops=(0.13, 0.24))
+        hl = always_redraw(make_hl)
+        # the hovered/selected name glows on top of the (dim) row
+        hover = always_redraw(lambda: neon(
+            left(mono(LOCATIONS[int(sel.get_value())], 16, "#FFE6E6"),
+                 lx + 0.55, ly0 - int(sel.get_value()) * ldy),
+            RED, widths=(6, 3), ops=(0.16, 0.26)))
+        marker = always_redraw(lambda: left(mono("▶", 15, RED), -6.98, ly0 - int(sel.get_value()) * ldy))
 
         # ---------------- live elements (más vida) ----------------
         # blinking REC + ticking timecode
@@ -187,7 +209,7 @@ class YellowstoneIntro(MovingCameraScene):
 
         self.play(FadeIn(header), FadeIn(idx_h), Create(list_div), run_time=0.6)
         self.play(LaggedStart(*[FadeIn(r, shift=RIGHT * 0.06) for r in rows], lag_ratio=0.03), run_time=0.9)
-        self.add(hl, marker, status, scan_status, sweep, rec_dot, rec_tc)
+        self.add(hl, hover, marker, status, scan_status, sweep, rec_dot, rec_tc)
 
         # --- BEAT 1: scanning ---
         random.seed(7)
@@ -207,7 +229,7 @@ class YellowstoneIntro(MovingCameraScene):
         phase.set_value(1)
         self.play(sel.animate.set_value(TARGET), run_time=0.25)
         rows[TARGET][2].become(left(mono("[●]", 16, RED), lx + 3.7, ly0 - TARGET * ldy))
-        retic = brackets(rows[TARGET], RED, ear=0.22).set_z_index(6)
+        retic = neon(brackets(rows[TARGET], RED, ear=0.22), RED, widths=(8,), ops=(0.28,)).set_z_index(6)
         warn = mono("ANOMALY DETECTED", 30, RED).move_to([1.6, 0.4, 0])
         self.play(FadeIn(warn, scale=1.1), GrowFromCenter(retic), self.flash(RED, 0.26), run_time=0.45)
         self.play(FadeOut(warn), run_time=0.45)
@@ -247,10 +269,19 @@ class YellowstoneIntro(MovingCameraScene):
             mono(f"DECRYPTING {int(round(prog.get_value()*100)):3d}%", 16, WHITE), -1.7, -1.0))
         self.add(bar_bg, bar_fill, pct)
 
+        # auth checklist (fills the right side of the panel as it decrypts)
+        auth_txt = ["> KEYFRAME 01 ......... OK", "> KEYFRAME 02 ......... OK",
+                    "> CIPHER MATCH ........ OK", "> FIREWALL ........ BYPASSED"]
+        auth = VGroup(*[left(mono(a, 13, RED if "BYPASS" in a else AMBER), 3.6, 0.62 - k * 0.34).set_opacity(0)
+                        for k, a in enumerate(auth_txt)])
+        warn2 = left(mono("// DO NOT TERMINATE SESSION", 13, RED).set_opacity(0.65), -1.7, -1.72)
+        self.add(auth, warn2)
+
         self.add_sound(snd("riser.wav"), gain=-7)
-        for step in [0.35, 0.62, 0.85, 1.0]:
+        for k, step in enumerate([0.35, 0.62, 0.85, 1.0]):
             self.add_sound(snd("tick.wav"), gain=-6)
-            self.play(prog.animate.set_value(step), run_time=0.85, rate_func=smooth)
+            self.play(prog.animate.set_value(step), auth[k].animate.set_opacity(1),
+                      run_time=0.85, rate_func=smooth)
 
         decrypting[0] = False
         phase.set_value(3)
@@ -260,13 +291,14 @@ class YellowstoneIntro(MovingCameraScene):
         self.add_sound(snd("access.wav"), gain=-2)
         unlocked = mono("ARCHIVE UNLOCKED", 30, WHITE).move_to([2.0, 0.1, 0])
         self.play(FadeOut(hex_lines), FadeOut(pct), FadeOut(bar_fill), FadeOut(bar_bg),
+                  FadeOut(auth), FadeOut(warn2),
                   FadeIn(unlocked, scale=1.1), dpanel.animate.set_stroke(WHITE), run_time=0.5)
         self.play(self.flash(WHITE, 0.55), run_time=0.4)
 
         # =================================================================
         # BEAT 4: iceberg descent
         # =================================================================
-        self.remove(hl, marker, status, rec_dot, rec_tc, scan_status, sweep)
+        self.remove(hl, hover, marker, status, rec_dot, rec_tc, scan_status, sweep)
         self.play(
             FadeOut(header), FadeOut(idx_h), FadeOut(list_div), FadeOut(rows),
             FadeOut(grid), FadeOut(retic),

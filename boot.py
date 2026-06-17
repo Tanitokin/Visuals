@@ -65,8 +65,10 @@ class WorstCitiesBoot(Scene):
         # --- header + single-layer title ---
         header = left(T("WORST CITIES DATABASE   /   BOOT SEQUENCE", 16, GREEN_DIM), -6.6, 3.55)
 
-        title = Text("WORST CITIES", font=FONT_TITLE, color=GREEN_BRT).scale_to_fit_width(9.0)
-        title.move_to([0, 2.45, 0]).set_z_index(22)
+        # title in the same font as the body (VT323), left-aligned, single layer
+        title = Text("WORST CITIES", font=FONT_BODY, color=GREEN_BRT).scale_to_fit_width(8.4)
+        left(title, -6.6, 2.5)
+        title.set_z_index(22)
 
         subtitle = left(T("FICTIONAL CITY HAZARD   //   RANKING SYSTEM", 19, GREEN_DIM), -6.58, 1.62)
         underline = Line([-6.6, 1.36, 0], [6.6, 1.36, 0], color=BORDER, stroke_width=1.5)
@@ -200,4 +202,4 @@ class WorstCitiesBoot(Scene):
         self.add_sound(snd("transition.wav"), gain=-8)
         self.play(FadeIn(ref, shift=UP * 0.05), FadeIn(press, shift=UP * 0.05), run_time=0.45, rate_func=smooth)
         self.add(press_cur)
-        self.wait(2.4)
+        self.wait(1.3)

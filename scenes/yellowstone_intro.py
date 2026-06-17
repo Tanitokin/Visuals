@@ -226,9 +226,9 @@ class YellowstoneIntro(MovingCameraScene):
             ttl = T(code, 12, AMBER).move_to(bar.get_center())
             sil = Polygon([-0.16, -0.28, 0], [0.16, -0.28, 0], [0.23, 0.1, 0], [0, 0.36, 0], [-0.23, 0.1, 0],
                           stroke_width=0, fill_color="#1a2029", fill_opacity=1).move_to(p.get_center() + LEFT*(w/2-0.45) + DOWN*0.06)
-            b = VGroup(Rectangle(w*0.4, 0.09, stroke_width=0, fill_color=DIM, fill_opacity=0.5),
-                       Rectangle(w*0.52, 0.09, stroke_width=0, fill_color=DIM, fill_opacity=0.3),
-                       Rectangle(w*0.28, 0.09, stroke_width=0, fill_color=RED, fill_opacity=0.5)
+            b = VGroup(Rectangle(width=w*0.4, height=0.09, stroke_width=0, fill_color=DIM, fill_opacity=0.5),
+                       Rectangle(width=w*0.52, height=0.09, stroke_width=0, fill_color=DIM, fill_opacity=0.3),
+                       Rectangle(width=w*0.28, height=0.09, stroke_width=0, fill_color=RED, fill_opacity=0.5)
                        ).arrange(DOWN, aligned_edge=LEFT, buff=0.12).move_to(p.get_center() + RIGHT*0.4 + DOWN*0.03)
             return VGroup(p, bar, ttl, sil, b).move_to(pos)
         wspots = [(0.7, 0.9, 2.5, 1.45), (3.4, 0.3, 2.5, 1.5), (1.2, -1.5, 2.5, 1.45),

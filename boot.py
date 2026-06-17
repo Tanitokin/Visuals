@@ -1,9 +1,10 @@
-"""WORST CITIES - boot / initial loading screen (v2).
+"""WORST CITIES - boot / initial loading screen (v3).
 
-Green-CRT terminal boot sequence: a crisp glitch-revealed title, a startup log
-that ticks off tasks with sharp key clicks, a cool segmented loading bar that
-fills block-by-block and hits a CLICK + ACCESS chime at 100% (with a screen
-flash), then OPENING WORST CITIES DATABASE -> PRESS ENTER TO CONTINUE.
+Green-CRT terminal boot. Single-layer title (no extrude/ghost layers) with a
+gentle "alive" CRT flicker; smooth fade reveals; a soft glow band that drifts
+down the screen and a subtle global brightness flicker keep everything alive. A
+segmented loading bar fills and hits a CLICK + ACCESS chime + flash at 100%,
+then OPENING WORST CITIES DATABASE -> PRESS ENTER TO CONTINUE.
 
 Render:
     manim -pqh --fps 30 boot.py WorstCitiesBoot
@@ -18,7 +19,6 @@ BG        = "#04110B"
 GREEN     = "#3DFF7A"
 GREEN_BRT = "#CFFFDD"
 GREEN_DIM = "#1F8A45"
-GREEN_SHA = "#0E5A28"   # extrude shadow
 BORDER    = "#1F8A45"
 
 FONT_TITLE = "Press Start 2P"
@@ -62,19 +62,11 @@ class WorstCitiesBoot(Scene):
         def blink(period=0.6, duty=0.6):
             return (clock.get_value() % period) < period * duty
 
-        # --- header ---
+        # --- header + single-layer title ---
         header = left(T("WORST CITIES DATABASE   /   BOOT SEQUENCE", 16, GREEN_DIM), -6.6, 3.55)
 
-        # --- title: crisp pixel wordmark with a 3D extrude shadow ---
-        main = Text("WORST CITIES", font=FONT_TITLE, color=GREEN_BRT).scale_to_fit_width(9.0)
-        main.move_to([0, 2.45, 0]).set_z_index(22)
-        extrude = VGroup()
-        for k in range(5, 0, -1):
-            e = main.copy().set_color(GREEN_SHA if k > 2 else GREEN)
-            e.shift(np.array([0.05, -0.05, 0]) * k).set_z_index(20)
-            extrude.add(e)
-        ghostL = main.copy().set_color(GREEN).set_opacity(0.6).shift(LEFT * 0.22).set_z_index(21)
-        ghostR = main.copy().set_color(GREEN_BRT).set_opacity(0.6).shift(RIGHT * 0.22).set_z_index(21)
+        title = Text("WORST CITIES", font=FONT_TITLE, color=GREEN_BRT).scale_to_fit_width(9.0)
+        title.move_to([0, 2.45, 0]).set_z_index(22)
 
         subtitle = left(T("FICTIONAL CITY HAZARD   //   RANKING SYSTEM", 19, GREEN_DIM), -6.58, 1.62)
         underline = Line([-6.6, 1.36, 0], [6.6, 1.36, 0], color=BORDER, stroke_width=1.5)
@@ -85,13 +77,10 @@ class WorstCitiesBoot(Scene):
         for i, txt in enumerate(BOOT_LINES):
             y = log_y0 - i * log_dy
             granted = (txt == "ACCESS GRANTED")
-            chk = T("[", 20, GREEN_DIM)
-            ok = T("OK", 20, GREEN_BRT)
-            chk2 = T("]", 20, GREEN_DIM)
-            grp = VGroup(chk, ok, chk2).arrange(RIGHT, buff=0.06)
-            left(grp, log_x, y)
+            tag = VGroup(T("[", 20, GREEN_DIM), T("OK", 20, GREEN_BRT), T("]", 20, GREEN_DIM)).arrange(RIGHT, buff=0.06)
+            left(tag, log_x, y)
             body = left(T(txt, 20, GREEN_BRT if granted else GREEN), log_x + 0.95, y)
-            lines.append(VGroup(grp, body))
+            lines.append(VGroup(tag, body))
 
         open_y = log_y0 - len(BOOT_LINES) * log_dy - 0.04
         open_t = left(T("> OPENING WORST CITIES DATABASE", 20, GREEN_BRT), log_x, open_y)
@@ -99,7 +88,7 @@ class WorstCitiesBoot(Scene):
                              fill_opacity=1).next_to(open_t, RIGHT, buff=0.1)
         open_cur.add_updater(lambda m: m.set_opacity(1.0 if blink(0.5) else 0.0))
 
-        # --- cool segmented loading bar ---
+        # --- segmented loading bar ---
         prog = ValueTracker(0.0)
         bar_l, bar_w, bar_y = -6.6, 11.2, -2.95
         NSEG = 44
@@ -125,7 +114,7 @@ class WorstCitiesBoot(Scene):
                                     stroke_color=GREEN_DIM, fill_opacity=0).move_to([cx, bar_y, 0]))
             fw = max(0.001, bar_w * val)
             glow = Rectangle(width=fw, height=0.2, stroke_width=0, fill_opacity=0).move_to([bar_l + fw / 2, bar_y, 0])
-            glow = glow.set_stroke(GREEN, 7, 0.18)
+            glow.set_stroke(GREEN, 7, 0.18)
             return VGroup(glow, g)
         bar = always_redraw(make_bar)
         pct = always_redraw(lambda: T(f"{int(round(prog.get_value()*100)):3d}%", 20, GREEN_BRT).move_to([6.15, bar_y, 0]))
@@ -137,16 +126,35 @@ class WorstCitiesBoot(Scene):
                               fill_opacity=1).next_to(press, RIGHT, buff=0.08)
         press_cur.add_updater(lambda m: m.set_opacity(1.0 if blink(0.55) else 0.0))
 
+        # --- "alive" CRT ambience: static scanlines + drifting glow band + flicker ---
         scan = VGroup(*[
             Line([-7.2, y, 0], [7.2, y, 0], color=BG, stroke_width=2, stroke_opacity=0.11)
             for y in np.arange(-4.0, 4.0, 0.15)
         ]).set_z_index(15)
 
+        drift = Rectangle(width=15, height=0.7, stroke_width=0, fill_color=GREEN, fill_opacity=0.05).set_z_index(13)
+        drift.add_updater(lambda m: m.move_to([0, 4.2 - ((clock.get_value() * 1.7) % 8.4), 0]))
+
+        flick = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=BG, fill_opacity=0.0).set_z_index(38)
+
+        def flick_up(m):
+            t = clock.get_value()
+            base = 0.02 + 0.025 * (0.5 + 0.5 * np.sin(t * 6.3))
+            spike = 0.06 if (np.sin(t * 47.0) > 0.93) else 0.0
+            m.set_opacity(base + spike)
+        flick.add_updater(flick_up)
+
+        # title breathing (single mobject, no extra layers)
+        def title_alive(m):
+            t = clock.get_value()
+            m.set_opacity(0.9 + 0.1 * (0.5 + 0.5 * np.sin(t * 2.3)) - (0.25 if np.sin(t * 39) > 0.96 else 0))
+        # (added after reveal)
+
         def flash(op=0.22, color=GREEN):
-            fl = Rectangle(width=15, height=8.5, stroke_width=0, fill_color=color, fill_opacity=0.0).set_z_index(40)
+            fl = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=color, fill_opacity=0.0).set_z_index(40)
             self.add(fl)
-            self.play(fl.animate.set_fill(color, opacity=op), run_time=0.05)
-            self.play(fl.animate.set_fill(color, opacity=0.0), run_time=0.13)
+            self.play(fl.animate.set_fill(color, opacity=op), run_time=0.06)
+            self.play(fl.animate.set_fill(color, opacity=0.0), run_time=0.16, rate_func=smooth)
             self.remove(fl)
 
         # =================================================================
@@ -156,52 +164,40 @@ class WorstCitiesBoot(Scene):
         self.add_sound(snd("ambient.wav"), gain=-14)
         self.add_sound(snd("boot.wav"), gain=-3)
 
-        self.add(scan)
-        self.play(FadeIn(header), run_time=0.3)
+        self.add(scan, drift, flick)
+        self.play(FadeIn(header), run_time=0.4, rate_func=smooth)
 
-        # glitch reveal of the title
-        self.add(extrude, ghostL, ghostR)
-        self.play(
-            FadeIn(main),
-            ghostL.animate.shift(RIGHT * 0.22).set_opacity(0),
-            ghostR.animate.shift(LEFT * 0.22).set_opacity(0),
-            run_time=0.32,
-        )
-        self.remove(ghostL, ghostR)
-        for op, rt in [(0.35, 0.04), (1.0, 0.05), (0.5, 0.04), (1.0, 0.06)]:
-            self.play(main.animate.set_opacity(op), run_time=rt)
-        # scanline sweep across the title
-        sweep = Rectangle(width=9.6, height=0.07, stroke_width=0, fill_color=GREEN_BRT,
-                          fill_opacity=0.8).move_to([0, 2.95, 0]).set_z_index(23)
-        self.add(sweep)
-        self.play(sweep.animate.move_to([0, 1.95, 0]), run_time=0.4, rate_func=linear)
-        self.remove(sweep)
+        # smooth title reveal + a couple of gentle flickers, then it "breathes"
+        self.play(FadeIn(title, scale=1.04), run_time=0.55, rate_func=smooth)
+        for op, rt in [(0.45, 0.05), (1.0, 0.06), (0.6, 0.05), (1.0, 0.07)]:
+            self.play(title.animate.set_opacity(op), run_time=rt)
+        title.add_updater(title_alive)
 
-        self.play(FadeIn(subtitle), Create(underline), run_time=0.35)
+        self.play(FadeIn(subtitle, shift=UP * 0.06), Create(underline), run_time=0.45, rate_func=smooth)
         self.add(bar_bg, bar, pct)
 
-        # boot log (fills to ~90%, each line a sharp key click)
+        # boot log: smooth fade-up reveals, sharp click each, bar steps up
         n = len(lines)
         for i, line in enumerate(lines):
             self.add_sound(snd("key.wav"), gain=-5)
-            self.play(FadeIn(line, shift=RIGHT * 0.06),
-                      prog.animate.set_value((i + 1) / (n + 1)), run_time=0.16)
+            self.play(FadeIn(line, shift=UP * 0.12), prog.animate.set_value((i + 1) / (n + 1)),
+                      run_time=0.3, rate_func=smooth)
             if i < n - 1:
-                self.wait(0.14)
+                self.wait(0.12)
 
-        # final rush to 100% -> CLICK + ACCESS + flash
+        # smooth rush to 100% -> CLICK + ACCESS + flash
         self.add_sound(snd("charge.wav"), gain=-5)
-        self.play(prog.animate.set_value(1.0), run_time=0.5, rate_func=rush_into)
+        self.play(prog.animate.set_value(1.0), run_time=0.55, rate_func=smooth)
         self.add_sound(snd("click.wav"), gain=-2)
         self.add_sound(snd("access.wav"), gain=-2)
         flash(0.22)
-        self.wait(0.35)
+        self.wait(0.4)
 
         # opening line + press enter
-        self.play(AddTextLetterByLetter(open_t), run_time=0.55)
+        self.play(AddTextLetterByLetter(open_t), run_time=0.6)
         self.add(open_cur)
         self.wait(0.5)
         self.add_sound(snd("transition.wav"), gain=-8)
-        self.play(FadeIn(ref), FadeIn(press), run_time=0.4)
+        self.play(FadeIn(ref, shift=UP * 0.05), FadeIn(press, shift=UP * 0.05), run_time=0.45, rate_func=smooth)
         self.add(press_cur)
         self.wait(2.4)

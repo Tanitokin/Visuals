@@ -157,7 +157,6 @@ class WorstCities(Scene):
         hr1 = right(T("ARCHIVE NODE 07", 26), 6.5, 3.46)
         hr2 = right(T("LOCAL NODE // ACTIVE", 18, GREEN_DIM), 6.5, 3.18)
         head_div = Line([-6.55, 2.94, 0], [6.55, 2.94, 0], color=BORDER, stroke_width=1)
-        subtitle = T("// THE 13 WORST PLACES TO LIVE // RANKED 13 TO 01 //", 18, GREEN_DIM).move_to([0, 2.52, 0])
 
         list_panel = Rectangle(width=6.5, height=4.02, stroke_color=BORDER,
                                stroke_width=1.5, fill_color=PANEL_FILL,
@@ -253,10 +252,10 @@ class WorstCities(Scene):
             g.add(mk)
 
             # field note (where the title used to be)
-            dm = T(f'"{DESCRIPTIONS[i]}"', 25, GREEN_BRT)
+            dm = T(f'"{DESCRIPTIONS[i]}"', 26, GREEN_BRT)
             if dm.width > 12.6:
                 dm.scale_to_fit_width(12.6)
-            g.add(dm.move_to([0, 2.0, 0]).set_z_index(20))
+            g.add(dm.move_to([0, 2.15, 0]).set_z_index(20))
 
             g.add(right(T(f"{rk:02d} // {c[0]}", 17), 6.42, COVER_C[1] + CBOX_H / 2 - 0.18).set_z_index(5))
 
@@ -346,7 +345,6 @@ class WorstCities(Scene):
         self.play(AddTextLetterByLetter(hl1), AddTextLetterByLetter(hr1), run_time=0.7)
         self.play(AddTextLetterByLetter(hl2), AddTextLetterByLetter(hr2),
                   Create(head_div), run_time=0.7)
-        self.play(FadeIn(subtitle), run_time=0.4)
 
         self.play(Create(list_panel), Create(cover_panel), Create(cover_frame),
                   Create(doss), run_time=0.7)
@@ -380,7 +378,7 @@ class WorstCities(Scene):
             self.add_sound(snd("loaded.wav"), gain=-4)
             self.play(FadeIn(stamp, scale=1.7), run_time=0.16, rate_func=rush_from)
             self.play(stamp.animate.scale(1.06), run_time=0.09, rate_func=there_and_back)
-            self.wait(2.1 if last else 1.55)
+            self.wait(2.7 if last else 2.05)
             return stamp
 
         # first city

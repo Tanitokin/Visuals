@@ -188,12 +188,12 @@ class WorstCitiesBoot(Scene):
                 self.wait(0.12)
 
         # smooth rush to 100% -> CLICK + ACCESS + flash
-        self.add_sound(snd("charge.wav"), gain=-5)
+        self.add_sound(snd("charge.wav"), gain=-6)
         self.play(prog.animate.set_value(1.0), run_time=0.55, rate_func=smooth)
-        self.add_sound(snd("click.wav"), gain=-2)
-        self.add_sound(snd("access.wav"), gain=-2)
-        flash(0.22)
-        self.wait(0.4)
+        self.add_sound(snd("click.wav"), gain=0)
+        self.add_sound(snd("access.wav"), gain=1)
+        flash(0.26)
+        self.wait(0.45)
 
         # opening line + press enter
         self.play(AddTextLetterByLetter(open_t), run_time=0.6)

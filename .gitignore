@@ -3,3 +3,6 @@
 /media/
 __pycache__/
 *.pyc
+
+# MCP config with API keys (do not commit)
+.mcp.json

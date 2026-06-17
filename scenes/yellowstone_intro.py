@@ -360,7 +360,7 @@ class YellowstoneIntro(MovingCameraScene):
         IW, IH = 4.9, 2.9
         ibx, iby = -3.75, 0.4
         iframe = Rectangle(width=IW, height=IH, stroke_color=AMBER, stroke_width=1.5,
-                           fill_color="#070A0D", fill_opacity=1).move_to([ibx, iby, 0])
+                           fill_opacity=0).move_to([ibx, iby, 0]).set_z_index(7)
         files = [f for f in glob.glob(os.path.join(BASE, "assets", "yellowstone.*"))
                  if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))]
         if files:

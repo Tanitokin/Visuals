@@ -22,7 +22,7 @@ import sys
 
 import numpy as np
 from manim import *
-from PIL import Image as PILImage
+from PIL import Image as PILImage, ImageOps, ImageEnhance
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from crt_style import (BG, GREEN, GREEN_BRT, GREEN_DIM, RED, BORDER,
@@ -58,16 +58,16 @@ def gf(rel, target_w=1920):
 # leave them "" to show the default  ENTITY NN // DOSSIER READY  line.
 # =========================================================================
 ENTITIES = [
-    {"label": "ENTITY 01", "name": "", "info": ""},
-    {"label": "ENTITY 02", "name": "", "info": ""},
-    {"label": "ENTITY 03", "name": "", "info": ""},
-    {"label": "ENTITY 04", "name": "", "info": ""},
-    {"label": "ENTITY 05", "name": "", "info": ""},
-    {"label": "ENTITY 06", "name": "", "info": ""},
-    {"label": "ENTITY 07", "name": "", "info": ""},
-    {"label": "ENTITY 08", "name": "", "info": ""},
-    {"label": "ENTITY 09", "name": "", "info": ""},
-    {"label": "ENTITY 10", "name": "", "info": ""},
+    {"label": "ENTITY 01", "name": "MOTHER BRAIN",        "info": "METROID"},
+    {"label": "ENTITY 02", "name": "SAMARITAN",           "info": "PERSON OF INTEREST"},
+    {"label": "ENTITY 03", "name": "AM",                  "info": "I HAVE NO MOUTH, AND I MUST SCREAM"},
+    {"label": "ENTITY 04", "name": "THE WAU",             "info": "SOMA"},
+    {"label": "ENTITY 05", "name": "FATHER",              "info": "FULLMETAL ALCHEMIST"},
+    {"label": "ENTITY 06", "name": "DEUS",                "info": "XENOGEARS"},
+    {"label": "ENTITY 07", "name": "THE NUMIDIUM",        "info": "THE ELDER SCROLLS"},
+    {"label": "ENTITY 08", "name": "THE HEALING CHURCH",  "info": "ATTEMPT TO BIRTH GREAT ONES // BLOODBORNE"},
+    {"label": "ENTITY 09", "name": "HUMAN INSTRUMENTALITY", "info": "PROJECT LILITH-REI // EVANGELION"},
+    {"label": "ENTITY 10", "name": "THE EMPEROR OF MANKIND", "info": "WARHAMMER 40,000"},
 ]
 
 # --- Grid / layout geometry (Manim frame is 14.222 x 8) -------------------
@@ -78,7 +78,7 @@ PAD = 0.085                       # inner padding of a card
 IMG_W = CARD_W - 2 * PAD          # image slot width
 IMG_H = IMG_W * 3 / 4             # 4:3 image slot
 LABEL_H = CARD_H - 2 * PAD - IMG_H - 0.05
-GRID_CY = -0.10                   # vertical centre of the grid
+GRID_CY = 0.05                    # vertical centre of the grid
 
 STEP_X = CARD_W + GAP_X
 STEP_Y = CARD_H + GAP_Y
@@ -94,12 +94,14 @@ def card_center(i):
 
 
 def cover_crop(path, aspect, key):
-    """Centre-crop an image to `aspect` (w/h) and cache it; return new path."""
-    out = os.path.join(CROP_DIR, f"{key}.png")
+    """Centre-crop to `aspect` (w/h); cache a colour and a desaturated
+    ('locked') greyscale version. Returns (color_path, gray_path)."""
+    color_out = os.path.join(CROP_DIR, f"{key}.png")
+    gray_out = os.path.join(CROP_DIR, f"{key}_bw.png")
     try:
         im = PILImage.open(path).convert("RGB")
     except Exception:
-        return path
+        return path, path
     w, h = im.size
     if w / h > aspect:                       # too wide -> crop sides
         nw = int(h * aspect)
@@ -109,8 +111,11 @@ def cover_crop(path, aspect, key):
         im = im.crop((0, (h - nh) // 2, w, (h - nh) // 2 + nh))
     if im.width > 384:                        # downscale so Manim isn't
         im = im.resize((384, round(im.height * 384 / im.width)), PILImage.LANCZOS)
-    im.save(out)
-    return out
+    im.save(color_out)
+    g = ImageOps.grayscale(im).convert("RGB")        # locked = greyscale ...
+    g = ImageEnhance.Brightness(g).enhance(0.82)      # ... slightly dimmed
+    g.save(gray_out)
+    return color_out, gray_out
 
 
 class DivinityIndex(Scene):
@@ -135,16 +140,12 @@ class DivinityIndex(Scene):
         frame = gf("02_UI_Frame/frame_full.png").scale_to_fit_height(7.74)
         frame.set_z_index(6)
 
-        # Title (Halo) + subtitle (VCR)
+        # Title (Halo), centred, with a soft pulsing glow
         title = Text("ARTIFICIAL DIVINITY INDEX", font=FONT_TITLE, color=GREEN_BRT)
-        title.scale_to_fit_width(9.6).move_to([0, 3.18, 0]).set_z_index(7)
-        title_glow = title.copy().set_color(GREEN).set_opacity(0.0).set_z_index(6)
-        subtitle = T("MAN-MADE GODS  //  SELECT SUBJECT", 22, GREEN_DIM)
-        subtitle.move_to([0, 2.52, 0]).set_z_index(7)
-        subdiv = Line([-3.0, 2.26, 0], [3.0, 2.26, 0], color=BORDER, stroke_width=1).set_z_index(7)
-
-        tl = left(T("// RESTRICTED ARCHIVE ACCESS", 16, RED), -6.62, 3.5).set_z_index(7)
-        tr = right(T("INDEX COUNT  //  10", 16, GREEN_DIM), 6.62, 3.5).set_z_index(7)
+        title.scale_to_fit_width(9.9).move_to([0, 3.16, 0]).set_z_index(7)
+        title_glow = title.copy().set_color(GREEN).set_z_index(6).scale(1.05)
+        title_glow.add_updater(lambda m: m.set_opacity(
+            0.16 + 0.12 * (0.5 + 0.5 * np.sin(clock.get_value() * 2.3))))
 
         # =================================================================
         # CARDS
@@ -163,9 +164,10 @@ class DivinityIndex(Scene):
                                ).move_to([cx, img_cy, 0]).set_z_index(0)
 
             src = os.path.join(DIV_DIR, f"entity_{i+1:02d}.png")
+            color_path = None
             if os.path.exists(src):
-                cropped = cover_crop(src, IMG_W / IMG_H, f"entity_{i+1:02d}")
-                img = ImageMobject(cropped).scale_to_fit_width(IMG_W)
+                color_path, gray_path = cover_crop(src, IMG_W / IMG_H, f"entity_{i+1:02d}")
+                img = ImageMobject(gray_path).scale_to_fit_width(IMG_W)   # locked = b/w
                 if img.height > IMG_H + 1e-3:
                     img.scale_to_fit_height(IMG_H)
                 img.move_to([cx, img_cy, 0]).set_z_index(1)
@@ -173,7 +175,7 @@ class DivinityIndex(Scene):
                 img = T("NO SIGNAL", 16, GREEN_DIM).move_to([cx, img_cy, 0]).set_z_index(1)
 
             veil = Rectangle(width=IMG_W, height=IMG_H, stroke_width=0,
-                             fill_color=BG, fill_opacity=0.45
+                             fill_color=BG, fill_opacity=0.40       # locked dim
                              ).move_to([cx, img_cy, 0]).set_z_index(2)
 
             num = left(T(f"{i+1:02d}", 22, GREEN_BRT),
@@ -182,7 +184,7 @@ class DivinityIndex(Scene):
 
             cards.append(dict(i=i, cx=cx, cy=cy, img_cy=img_cy,
                               bg=bg, slotbg=slotbg, img=img, veil=veil,
-                              num=num, lbl=lbl))
+                              num=num, lbl=lbl, color_path=color_path, color_img=None))
 
         # =================================================================
         # SELECTION CURSOR  (moves card-to-card; pulses via updater)
@@ -216,13 +218,35 @@ class DivinityIndex(Scene):
 
         place_cursor(cards[0]["cx"], cards[0]["cy"])
 
-        def cursor_pulse(m):
-            # glow opacity cycles ~0.65 -> 1.0
-            p = 0.65 + 0.35 * (0.5 + 0.5 * np.sin(clock.get_value() * 4.2))
-            border.set_stroke(GREEN_BRT, 2.5, 0.9 + 0.1 * p)
-            glow.set_stroke(GREEN, 10, 0.26 * p)
-            ticks.set_stroke(GREEN_BRT, 4, 0.7 + 0.3 * p)
-        border.add_updater(cursor_pulse)
+        def cursor_blink(m):
+            # hard on/off blink, like a videogame character-select frame
+            on = (clock.get_value() % 0.46) < 0.46 * 0.58
+            border.set_stroke(GREEN_BRT, 2.8, 1.0 if on else 0.12)
+            glow.set_stroke(GREEN, 11, 0.34 if on else 0.05)
+            ticks.set_stroke(GREEN_BRT, 4.2, 1.0 if on else 0.14)
+        border.add_updater(cursor_blink)
+
+        def make_color(card):
+            """Full-colour version of a card's image (shown only when active)."""
+            ci = ImageMobject(card["color_path"]).scale_to_fit_width(IMG_W)
+            if ci.height > IMG_H + 1e-3:
+                ci.scale_to_fit_height(IMG_H)
+            return ci.move_to([card["cx"], card["img_cy"], 0]).scale(1.02).set_z_index(3)
+
+        def select(card):
+            """Reveal colour + lift veil on the now-active card."""
+            card["veil"].set_opacity(0.0)
+            if card["color_path"]:
+                ci = make_color(card)
+                card["color_img"] = ci
+                self.add(ci)
+
+        def deselect(card):
+            """Return a card to its locked black-and-white state."""
+            card["veil"].set_opacity(0.40)
+            if card["color_img"] is not None:
+                self.remove(card["color_img"])
+                card["color_img"] = None
 
         # faint thin scanline easing down the active card's image
         sweep = Rectangle(width=IMG_W, height=0.02, stroke_width=0,
@@ -253,6 +277,9 @@ class DivinityIndex(Scene):
             g = VGroup()
             if e["name"]:
                 main = left(T(f"{e['label']}  //  {e['name']}", 22, GREEN_BRT), -4.0, -2.96)
+                if main.width > 7.8:
+                    main.scale_to_fit_width(7.8)
+                    left(main, -4.0, -2.96)
             else:
                 main = VGroup(
                     T(f"{e['label']} ", 22, GREEN_BRT),
@@ -321,7 +348,7 @@ class DivinityIndex(Scene):
 
         # chrome appears immediately, then cards load in fast (~1s)
         self.add(grid, frame, vign, scan, drift, flick, noise1, noise2)
-        self.add(title_glow, title, subtitle, subdiv, tl, tr, nav, clk, rec_t, rec_dot)
+        self.add(title_glow, title, nav, clk, rec_t, rec_dot)
         self.add(panel_glow, panel, play, sel_label)
 
         self.add_sound(snd("es_loading_slow.wav"), gain=-11)
@@ -346,8 +373,7 @@ class DivinityIndex(Scene):
         panel_txt = build_panel_text(0)
         self.add(panel_txt)
         sel["i"], sel["t0"] = 0, clock.get_value()
-        cards[0]["veil"].set_opacity(0.0)
-        cards[0]["img"].scale(1.02)
+        select(cards[0])
         self.add_sound(snd("es_select_ok.wav"), gain=-10)
         self.flash_card(cards[0])
         self.wait(HOLD)
@@ -361,17 +387,12 @@ class DivinityIndex(Scene):
             old_txt = panel_txt
             panel_txt = build_panel_text(i)
 
-            # restore previous, light up new, jump cursor
-            prev["img"].scale(1 / 1.02)
-            cur["img"].scale(1.02)
+            # lock the previous (back to b/w), jump cursor, reveal the new in colour
+            deselect(prev)
             place_cursor(cur["cx"], cur["cy"])
             sel["i"], sel["cx"], sel["cy"], sel["t0"] = i, cur["cx"], cur["cy"], clock.get_value()
-            self.play(
-                prev["veil"].animate.set_opacity(0.52),
-                cur["veil"].animate.set_opacity(0.0),
-                FadeOut(old_txt),
-                run_time=TRANS, rate_func=rush_from,
-            )
+            select(cur)
+            self.remove(old_txt)
             self.add(panel_txt)
             self.flash_card(cur)
             self.wait(HOLD)

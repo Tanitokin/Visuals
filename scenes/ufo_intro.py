@@ -143,7 +143,14 @@ class UFOIntro(MovingCameraScene):
             for j, d in enumerate(m):
                 d.set_opacity(0.18 + 0.82 * (0.5 + 0.5 * np.sin(t * 6 - j * 1.4)))
         lights.add_updater(light_upd)
-        ufo = VGroup(glow(body, GREEN, ((11, 0.05), (6, 0.12))), body, lights).move_to([UX, 5.8, 0])
+        ufo_pulse = body.copy().set_fill(opacity=0)
+
+        def pulse_upd(m):
+            o = 0.10 + 0.12 * (0.5 + 0.5 * np.sin(clock.get_value() * 3))
+            m.set_stroke(GREEN, 15, o)
+        ufo_pulse.add_updater(pulse_upd)
+        ufo = VGroup(ufo_pulse, glow(body, GREEN, ((16, 0.06), (9, 0.13), (4, 0.24))),
+                     body, lights).move_to([UX, 5.8, 0])
 
         def bob(m):
             m.move_to([UX, UY + 0.08 * np.sin(clock.get_value() * 2.2), 0])
@@ -173,8 +180,10 @@ class UFOIntro(MovingCameraScene):
 
         title = Text(TITLE, font=UI, weight="BOLD", color=GREENB).scale_to_fit_width(7.0).move_to([0, -1.5, 0])
         targets = [L.get_center() for L in title]
-        for L in title:
-            L.move_to([UX, 1.0, 0]).set_opacity(0)
+        nL = max(1, len(title) - 1)
+        for i, L in enumerate(title):
+            sx = float(np.interp(i, [0, nL], [-0.45, 0.45]))
+            L.move_to([sx, 1.05, 0]).set_opacity(0)
         tagline = Text(TAGLINE, font=UI, weight="SEMIBOLD", font_size=22, color=GREEN).move_to([0, -2.45, 0]).set_opacity(0)
 
         # =================================================================
@@ -183,7 +192,7 @@ class UFOIntro(MovingCameraScene):
         self.play(Create(frame), FadeIn(cbr), FadeIn(hL), FadeIn(sbar), run_time=0.6)
         self.add(status, scan, cursor)
 
-        self.play(ufo.animate.move_to([UX, UY, 0]), run_time=1.1, rate_func=overshoot)
+        self.play(ufo.animate.move_to([UX, UY, 0]), run_time=1.4, rate_func=smooth)
         ufo.add_updater(bob)
         self.wait(0.2)
 
@@ -198,8 +207,8 @@ class UFOIntro(MovingCameraScene):
         n = len(title)
         for j in range(n):
             self.add_sound(snd("ui_step.wav"), time_offset=0.1 + j * (1.45 / n), gain=-9)
-        self.play(LaggedStart(*[L.animate(rate_func=rush_from).move_to(tp).set_opacity(1)
-                                for L, tp in zip(title, targets)], lag_ratio=0.12), run_time=1.7)
+        self.play(LaggedStart(*[L.animate(rate_func=smooth).move_to(tp).set_opacity(1)
+                                for L, tp in zip(title, targets)], lag_ratio=0.1), run_time=1.9)
 
         tglow = glow(title, GREEN, ((15, 0.05), (8, 0.10), (4, 0.2)))
         self.add_sound(snd("beam_on.wav"), gain=-11)

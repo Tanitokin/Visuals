@@ -85,7 +85,7 @@ STEP_Y = CARD_H + GAP_Y
 COL_X = [(-(COLS - 1) / 2 + c) * STEP_X for c in range(COLS)]
 ROW_Y = [GRID_CY + (ROWS - 1) / 2 * STEP_Y - r * STEP_Y for r in range(ROWS)]
 
-HOLD = 2.8        # seconds a subject stays selected
+HOLD = 2.0        # seconds a subject stays selected
 TRANS = 0.2       # clink transition time
 
 
@@ -184,7 +184,8 @@ class DivinityIndex(Scene):
 
             cards.append(dict(i=i, cx=cx, cy=cy, img_cy=img_cy,
                               bg=bg, slotbg=slotbg, img=img, veil=veil,
-                              num=num, lbl=lbl, color_path=color_path, color_img=None))
+                              num=num, lbl=lbl, color_path=color_path,
+                              color_img=None, name_lbl=None))
 
         # =================================================================
         # SELECTION CURSOR  (moves card-to-card; pulses via updater)
@@ -234,19 +235,32 @@ class DivinityIndex(Scene):
             return ci.move_to([card["cx"], card["img_cy"], 0]).scale(1.02).set_z_index(3)
 
         def select(card):
-            """Reveal colour + lift veil on the now-active card."""
+            """Reveal colour, lift veil, and swap label ENTITY NN -> god name."""
             card["veil"].set_opacity(0.0)
             if card["color_path"]:
                 ci = make_color(card)
                 card["color_img"] = ci
                 self.add(ci)
+            nm = ENTITIES[card["i"]]["name"]
+            if nm:
+                card["lbl"].set_opacity(0.0)
+                nl = T(nm, 18, GREEN_BRT)
+                if nl.width > CARD_W - 0.16:
+                    nl.scale_to_fit_width(CARD_W - 0.16)
+                nl.move_to(card["lbl"].get_center()).set_z_index(4)
+                card["name_lbl"] = nl
+                self.add(nl)
 
         def deselect(card):
-            """Return a card to its locked black-and-white state."""
+            """Return a card to its locked black-and-white state (ENTITY NN)."""
             card["veil"].set_opacity(0.40)
             if card["color_img"] is not None:
                 self.remove(card["color_img"])
                 card["color_img"] = None
+            if card["name_lbl"] is not None:
+                self.remove(card["name_lbl"])
+                card["name_lbl"] = None
+            card["lbl"].set_opacity(1.0)
 
         # faint thin scanline easing down the active card's image
         sweep = Rectangle(width=IMG_W, height=0.02, stroke_width=0,
@@ -382,8 +396,8 @@ class DivinityIndex(Scene):
         for i in range(1, len(cards)):
             prev, cur = cards[i - 1], cards[i]
 
-            self.add_sound(snd("es_system_beep.wav"), gain=-9)
-            self.add_sound(snd("ui_tick.wav"), gain=-15)
+            self.add_sound(snd("es_select_ok.wav"), gain=-10)   # selection sound
+            self.add_sound(snd("ui_tick.wav"), gain=-16)
             old_txt = panel_txt
             panel_txt = build_panel_text(i)
 

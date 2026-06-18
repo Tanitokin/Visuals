@@ -15,6 +15,7 @@ segmented loading bars, mechanical SFX) plus a few standalone animations.
 │   ├── template_scene.py    # minimal starter — copy to begin a new scene
 │   ├── boot.py              # WORST CITIES boot / loading screen
 │   ├── worst_cities.py      # WORST CITIES ranked countdown menu
+│   ├── divinity_index.py    # ARTIFICIAL DIVINITY INDEX 2x5 select screen
 │   ├── cycloid.py           # a rolling-circle cycloid animation
 │   └── orbital_uplink.py    # a satellite / ground-station animation
 ├── docs/
@@ -42,6 +43,7 @@ Output lands in `media/` (git-ignored).
 |------------|-------|------------|
 | `scenes/boot.py` | `WorstCitiesBoot` | CRT boot sequence: log ticks off, bar fills, ACCESS GRANTED. |
 | `scenes/worst_cities.py` | `WorstCities` | Ranked countdown #13→#01 with covers + dossier. |
+| `scenes/divinity_index.py` | `DivinityIndex` | "ARTIFICIAL DIVINITY INDEX" 2×5 god-select screen: cursor steps 01→10 with pulsing glow, clinks, dossier panel, glitch-out. Images in `assets/divinity/`. |
 | `scenes/template_scene.py` | `CRTTemplate` | Minimal starter using the toolkit. |
 | `scenes/cycloid.py` | `CycloidScene` | Rolling circle traces a cycloid. |
 | `scenes/orbital_uplink.py` | `OrbitalUplink` | Satellite orbiting a wireframe planet. |

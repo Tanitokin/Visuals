@@ -72,13 +72,13 @@ ENTITIES = [
 
 # --- Grid / layout geometry (Manim frame is 14.222 x 8) -------------------
 COLS, ROWS = 5, 2
-CARD_W, CARD_H = 2.36, 2.08
-GAP_X, GAP_Y = 0.30, 0.40
+CARD_W, CARD_H = 2.36, 2.06
+GAP_X, GAP_Y = 0.30, 0.30
 PAD = 0.085                       # inner padding of a card
 IMG_W = CARD_W - 2 * PAD          # image slot width
 IMG_H = IMG_W * 3 / 4             # 4:3 image slot
 LABEL_H = CARD_H - 2 * PAD - IMG_H - 0.05
-GRID_CY = -0.34                   # vertical centre of the grid
+GRID_CY = -0.10                   # vertical centre of the grid
 
 STEP_X = CARD_W + GAP_X
 STEP_Y = CARD_H + GAP_Y
@@ -173,7 +173,7 @@ class DivinityIndex(Scene):
                 img = T("NO SIGNAL", 16, GREEN_DIM).move_to([cx, img_cy, 0]).set_z_index(1)
 
             veil = Rectangle(width=IMG_W, height=IMG_H, stroke_width=0,
-                             fill_color=BG, fill_opacity=0.52
+                             fill_color=BG, fill_opacity=0.45
                              ).move_to([cx, img_cy, 0]).set_z_index(2)
 
             num = left(T(f"{i+1:02d}", 22, GREEN_BRT),
@@ -189,13 +189,13 @@ class DivinityIndex(Scene):
         # =================================================================
         sel = {"i": 0, "t0": 0.0, "cx": cards[0]["cx"], "cy": cards[0]["cy"]}
 
-        border = Rectangle(width=CARD_W + 0.06, height=CARD_H + 0.06,
-                           stroke_color=GREEN_BRT, stroke_width=3.0, fill_opacity=0
+        border = Rectangle(width=CARD_W + 0.05, height=CARD_H + 0.05,
+                           stroke_color=GREEN_BRT, stroke_width=2.5, fill_opacity=0
                            ).set_z_index(8)
-        glow = Rectangle(width=CARD_W + 0.06, height=CARD_H + 0.06,
-                         stroke_color=GREEN, stroke_width=11, fill_opacity=0
+        glow = Rectangle(width=CARD_W + 0.05, height=CARD_H + 0.05,
+                         stroke_color=GREEN, stroke_width=10, fill_opacity=0
                          ).set_z_index(7)
-        # L-shaped corner ticks for that "locked target" videogame feel
+        # corner brackets that hug the card corners pointing inward ("locked")
         ticks = VGroup()
         for _ in range(8):
             ticks.add(Line(ORIGIN, ORIGIN, color=GREEN_BRT, stroke_width=4))
@@ -204,13 +204,12 @@ class DivinityIndex(Scene):
         def place_cursor(cx, cy):
             border.move_to([cx, cy, 0])
             glow.move_to([cx, cy, 0])
-            hw, hh, L = (CARD_W + 0.06) / 2, (CARD_H + 0.06) / 2, 0.26
+            hw, hh, L = (CARD_W + 0.05) / 2, (CARD_H + 0.05) / 2, 0.30
             corners = [(-hw, hh), (hw, hh), (-hw, -hh), (hw, -hh)]
             k = 0
             for (dx, dy) in corners:
-                ox = cx + dx
-                oy = cy + dy
-                sx = -1 if dx < 0 else 1
+                ox, oy = cx + dx, cy + dy
+                sx = 1 if dx < 0 else -1          # point inward along the edge
                 sy = -1 if dy > 0 else 1
                 ticks[k].put_start_and_end_on([ox, oy, 0], [ox + sx * L, oy, 0]); k += 1
                 ticks[k].put_start_and_end_on([ox, oy, 0], [ox, oy + sy * L, 0]); k += 1
@@ -220,58 +219,57 @@ class DivinityIndex(Scene):
         def cursor_pulse(m):
             # glow opacity cycles ~0.65 -> 1.0
             p = 0.65 + 0.35 * (0.5 + 0.5 * np.sin(clock.get_value() * 4.2))
-            border.set_stroke(GREEN_BRT, 3.0, 0.85 + 0.15 * p)
-            glow.set_stroke(GREEN, 11, 0.30 * p)
-            ticks.set_stroke(GREEN_BRT, 4, 0.6 + 0.4 * p)
+            border.set_stroke(GREEN_BRT, 2.5, 0.9 + 0.1 * p)
+            glow.set_stroke(GREEN, 10, 0.26 * p)
+            ticks.set_stroke(GREEN_BRT, 4, 0.7 + 0.3 * p)
         border.add_updater(cursor_pulse)
 
-        # faint scanline sweeping down the active card's image
-        sweep = Rectangle(width=IMG_W, height=0.035, stroke_width=0,
+        # faint thin scanline easing down the active card's image
+        sweep = Rectangle(width=IMG_W, height=0.02, stroke_width=0,
                           fill_color=GREEN_BRT, fill_opacity=0.0).set_z_index(3)
 
         def sweep_upd(m):
             top = sel["cy"] + CARD_H / 2 - PAD
-            phase = ((clock.get_value() - sel["t0"]) * 0.85) % 1.0
-            y = top - phase * IMG_H
-            m.move_to([sel["cx"], y, 0])
-            m.set_fill(GREEN_BRT, 0.22 * (0.5 + 0.5 * np.sin(phase * np.pi)))
+            phase = ((clock.get_value() - sel["t0"]) * 0.7) % 1.0
+            m.move_to([sel["cx"], top - phase * IMG_H, 0])
+            m.set_fill(GREEN_BRT, 0.10 * np.sin(phase * np.pi))
         sweep.add_updater(sweep_upd)
 
         # =================================================================
         # LOWER PANEL  (rebuilt per selection)
         # =================================================================
-        panel = RoundedRectangle(width=9.4, height=1.04, corner_radius=0.05,
+        panel = RoundedRectangle(width=9.4, height=0.86, corner_radius=0.05,
                                  stroke_color=BORDER, stroke_width=1.5,
                                  fill_color=PANEL_FILL, fill_opacity=0.62
-                                 ).move_to([0, -3.0, 0]).set_z_index(4)
+                                 ).move_to([0, -2.94, 0]).set_z_index(4)
         panel_glow = panel.copy().set_stroke(GREEN, 5, 0.08).set_fill(opacity=0).set_z_index(3)
         play = Triangle(color=GREEN_BRT, fill_color=GREEN_BRT, fill_opacity=1
-                        ).scale(0.16).rotate(-90 * DEGREES)
-        play.move_to([-4.35, -3.0, 0]).set_z_index(5)
-        sel_label = left(T("// SELECT SUBJECT", 16, GREEN_DIM), -4.05, -2.74).set_z_index(5)
+                        ).scale(0.15).rotate(-90 * DEGREES)
+        play.move_to([-4.32, -2.96, 0]).set_z_index(5)
+        sel_label = left(T("// SELECT SUBJECT", 15, GREEN_DIM), -4.0, -2.70).set_z_index(5)
 
         def build_panel_text(i):
             e = ENTITIES[i]
             g = VGroup()
             if e["name"]:
-                main = left(T(f"{e['label']}  //  {e['name']}", 24, GREEN_BRT), -4.05, -3.02)
+                main = left(T(f"{e['label']}  //  {e['name']}", 22, GREEN_BRT), -4.0, -2.96)
             else:
                 main = VGroup(
-                    T(f"{e['label']} ", 24, GREEN_BRT),
-                    T("// DOSSIER READY", 24, GREEN),
-                ).arrange(RIGHT, buff=0.12)
-                left(main, -4.05, -3.02)
+                    T(f"{e['label']} ", 22, GREEN_BRT),
+                    T("// DOSSIER READY", 22, GREEN),
+                ).arrange(RIGHT, buff=0.1)
+                left(main, -4.0, -2.96)
             g.add(main.set_z_index(5))
             info = e["info"] or "Dossier decrypted // awaiting classification."
-            inf = left(T(info, 16, GREEN_DIM), -4.05, -3.30)
+            inf = left(T(info, 15, GREEN_DIM), -4.0, -3.20)
             if inf.width > 8.4:
                 inf.scale_to_fit_width(8.4)
-                left(inf, -4.05, -3.30)
+                left(inf, -4.0, -3.20)
             g.add(inf.set_z_index(5))
             # blinking cursor after the main line
-            cur = Rectangle(width=0.13, height=0.26, stroke_width=0,
+            cur = Rectangle(width=0.12, height=0.24, stroke_width=0,
                             fill_color=GREEN, fill_opacity=1).set_z_index(5)
-            cur.next_to(main, RIGHT, buff=0.12)
+            cur.next_to(main, RIGHT, buff=0.1)
             cur.add_updater(lambda m: m.set_opacity(1.0 if blink(0.55) else 0.0))
             g.add(cur)
             return g
@@ -280,10 +278,10 @@ class DivinityIndex(Scene):
         # BOTTOM NAV HINT + clock + REC
         # =================================================================
         nav = left(T("<>  NAVIGATE      [ENTER] SELECT      [ESC] BACK", 15, GREEN_DIM),
-                   -6.6, -3.74).set_z_index(7)
-        clk = right(T("22:17:09", 15, GREEN_DIM), 5.95, -3.74).set_z_index(7)
-        rec_t = right(T("REC", 15, RED), 6.62, -3.74).set_z_index(7)
-        rec_dot = Dot([6.78, -3.735, 0], radius=0.055, color=RED).set_z_index(7)
+                   -6.6, -3.60).set_z_index(7)
+        clk = right(T("22:17:09", 15, GREEN_DIM), 5.95, -3.60).set_z_index(7)
+        rec_t = right(T("REC", 15, RED), 6.62, -3.60).set_z_index(7)
+        rec_dot = Dot([6.78, -3.595, 0], radius=0.055, color=RED).set_z_index(7)
         rec_dot.add_updater(lambda m: m.set_opacity(1.0 if blink(0.9, 0.55) else 0.15))
 
         # =================================================================
@@ -291,8 +289,8 @@ class DivinityIndex(Scene):
         # =================================================================
         scan = gf("07_Effects/crt_scanlines.png").scale_to_fit_height(8.0).set_z_index(30).set_opacity(0.22)
         vign = gf("07_Effects/vignette_overlay.png", 1024).scale_to_fit_height(8.0).set_z_index(29).set_opacity(0.75)
-        noise1 = gf("07_Effects/noise_overlay_01.png", 1024).scale_to_fit_height(8.0).set_z_index(31)
-        noise2 = gf("07_Effects/noise_overlay_02.png", 1024).scale_to_fit_height(8.0).set_z_index(31)
+        noise1 = gf("07_Effects/noise_overlay_01.png", 768).scale_to_fit_height(8.0).set_z_index(31)
+        noise2 = gf("07_Effects/noise_overlay_02.png", 768).scale_to_fit_height(8.0).set_z_index(31)
         NOISE = 0.06
 
         def noise_upd(m):
@@ -396,8 +394,8 @@ class DivinityIndex(Scene):
 
     def final_glitch(self, card):
         clock = self.clock
-        self.add_sound(snd("glitch.wav"), gain=-5)
-        self.add_sound(snd("boom.wav"), gain=-4)
+        self.add_sound(snd("glitch.wav"), gain=-7)
+        self.add_sound(snd("boom.wav"), gain=-6)
         g = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=GREEN, fill_opacity=0.0).set_z_index(40)
         r = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=RED, fill_opacity=0.0).set_z_index(41)
         self.add(g, r)
@@ -412,7 +410,7 @@ class DivinityIndex(Scene):
                       r.animate.set_fill(RED, np.random.uniform(0.0, 0.16)),
                       run_time=1 / 30, rate_func=linear)
             self.remove(strip)
-        self.add_sound(snd("es_disconnect.wav"), gain=-4)
+        self.add_sound(snd("es_disconnect.wav"), gain=-5)
         black = Rectangle(width=15, height=8.6, stroke_width=0, fill_color="#000000",
                           fill_opacity=0.0).set_z_index(45)
         self.add(black)

@@ -84,7 +84,8 @@ STEP_Y = CARD_H + GAP_Y
 COL_X = [(-(COLS - 1) / 2 + c) * STEP_X for c in range(COLS)]
 ROW_Y = [GRID_CY + (ROWS - 1) / 2 * STEP_Y - r * STEP_Y for r in range(ROWS)]
 
-VIEW = 5.0        # seconds a subject stays selected before jumping to the next
+VIEW = 3.0        # seconds the subject is held (after fading back in) before the next
+FADE = 0.5        # smooth fade-to-black duration
 
 
 def card_center(i):
@@ -378,24 +379,37 @@ class DivinityIndex(Scene):
         for op, rt in [(0.45, 0.05), (1.0, 0.06), (0.7, 0.05), (1.0, 0.06)]:
             self.play(title.animate.set_opacity(op), run_time=rt)
 
-        # cursor + sweep come alive
+        # cursor + sweep + the smooth fade-to-black overlay
         self.add(glow, border, ticks, sweep)
+        blk = Rectangle(width=15, height=8.6, stroke_width=0, fill_color="#000000",
+                        fill_opacity=0.0).set_z_index(44)
+        self.add(blk)
 
-        def click(card):                      # selection "click" + 2-3 frame flash
-            self.add_sound(snd("es_system_beep.wav"), gain=-8)
+        def fade_to_black():
+            self.play(blk.animate.set_fill("#000000", 1.0), run_time=FADE, rate_func=smooth)
+
+        def fade_back():
+            self.play(blk.animate.set_fill("#000000", 0.0), run_time=FADE, rate_func=smooth)
+
+        def cycle(card):
+            # subject shown -> select click -> fade to black -> back with the SAME
+            # one selected -> hold 3s.  (Then the caller passes to the next.)
+            self.add_sound(snd("es_select_ok.wav"), gain=-9)
             self.flash_card(card)
+            fade_to_black()
+            fade_back()
+            self.wait(VIEW)
 
-        # Rhythm: each subject stays selected ~5s, then jumps straight to the next.
-        # ENTITY 01 is revealed by the card load above.
+        # ENTITY 01 (revealed by the card load above)
         panel_txt = build_panel_text(0)
         self.add(panel_txt)
-        sel["i"], sel["t0"] = 0, clock.get_value()
+        sel["i"], sel["cx"], sel["cy"], sel["t0"] = 0, cards[0]["cx"], cards[0]["cy"], clock.get_value()
         select(cards[0])
-        click(cards[0])
-        self.wait(VIEW)
+        cycle(cards[0])
 
         for i in range(1, len(cards)):
             prev, cur = cards[i - 1], cards[i]
+            # pass to the next subject (cursor jumps, it lights up in colour)
             deselect(prev)
             old_txt = panel_txt
             panel_txt = build_panel_text(i)
@@ -404,16 +418,12 @@ class DivinityIndex(Scene):
             sel["i"], sel["cx"], sel["cy"], sel["t0"] = i, cur["cx"], cur["cy"], clock.get_value()
             select(cur)
             self.add(panel_txt)
-            click(cur)
-            self.wait(VIEW)
+            cycle(cur)
 
-        # ending: a quick cut to black
+        # ending: fade out and hold on black
         self.add_sound(snd("es_disconnect.wav"), gain=-6)
-        blk = Rectangle(width=15, height=8.6, stroke_width=0, fill_color="#000000",
-                        fill_opacity=0.0).set_z_index(44)
-        self.add(blk)
-        self.play(blk.animate.set_fill("#000000", 1.0), run_time=0.12, rate_func=linear)
-        self.wait(0.5)
+        fade_to_black()
+        self.wait(0.6)
 
     # ---------------------------------------------------------------------
     def flash_card(self, card):

@@ -405,12 +405,33 @@ class DivinityIndex(Scene):
         def fade_back():
             self.play(blk.animate.set_fill("#000000", 0.0), run_time=FADE, rate_func=smooth)
 
+        def confirm(card):
+            # feel like CLICKING the entity (not just hovering): a tactile click
+            # + the card "presses in" and releases, right before the fade to black.
+            self.add_sound(snd("es_system_beep.wav"), gain=-7)
+            self.add_sound(snd("click.wav"), gain=-9)
+            cx, cy = card["cx"], card["cy"]
+            fl = Rectangle(width=CARD_W + 0.05, height=CARD_H + 0.05, stroke_width=0,
+                           fill_color=GREEN_BRT, fill_opacity=0.0
+                           ).move_to([cx, cy, 0]).set_z_index(9)
+            self.add(fl)
+            ci = card["color_img"]
+            if ci is not None:
+                self.play(ci.animate.scale(0.93), fl.animate.set_fill(GREEN_BRT, 0.55),
+                          run_time=0.07, rate_func=rush_into)
+                self.play(ci.animate.scale(1 / 0.93), fl.animate.set_fill(GREEN, 0.0),
+                          run_time=0.13, rate_func=rush_from)
+            else:
+                self.play(fl.animate.set_fill(GREEN_BRT, 0.55), run_time=0.07)
+                self.play(fl.animate.set_fill(GREEN, 0.0), run_time=0.13)
+            self.remove(fl)
+
         def cycle(card):
-            # subject shown + select click -> hold ~4s -> fade to black -> back with
-            # the SAME one selected -> hold ~3s.  (Then the caller passes to the next.)
+            # shown + selection sound -> view ~4s -> SELECTED click + confirm
+            # animation -> fade to black -> back with the same selected -> hold ~3s.
             self.add_sound(snd("es_select_ok.wav"), gain=-9)
-            self.flash_card(card)
             self.wait(VIEW_BEFORE)
+            confirm(card)
             fade_to_black()
             fade_back()
             self.wait(VIEW_AFTER)

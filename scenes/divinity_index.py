@@ -356,12 +356,17 @@ class DivinityIndex(Scene):
         # =================================================================
         # SEQUENCE
         # =================================================================
-        # continuous ambient background, tiled so it never drops out
+        # continuous ambient background, tiled to the piece length so it never
+        # drops out AND never overshoots the end (which would pad the video).
+        god_cycle = 0.1 + VIEW_BEFORE + 2 * FADE + VIEW_AFTER
+        bed_end = 0.95 + 0.22 + len(ENTITIES) * god_cycle + FADE + 0.6 - 0.4
+
         def bed(name, gain, seg):
             t = 0.0
-            while t < 95.0:
+            while t + seg < bed_end:
                 self.add_sound(snd(name), time_offset=t, gain=gain)
                 t += seg
+            self.add_sound(snd(name), time_offset=max(0.0, bed_end - seg), gain=gain)
         bed("ambient.wav", -11, 52)        # main atmospheric bed
         bed("dark_drone.wav", -16, 22)     # low tonal layer
         bed("crt_hum.wav", -20, 12)        # faint CRT hum

@@ -21,7 +21,7 @@ import sys
 
 import numpy as np
 from manim import *
-from PIL import Image as PILImage, ImageOps, ImageEnhance
+from PIL import Image as PILImage, ImageOps, ImageEnhance, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from crt_style import (BG, GREEN, GREEN_BRT, GREEN_DIM, RED, BORDER,
@@ -109,8 +109,9 @@ def cover_crop(path, aspect, key):
     else:                                    # too tall -> crop top/bottom
         nh = int(w / aspect)
         im = im.crop((0, (h - nh) // 2, w, (h - nh) // 2 + nh))
-    if im.width > 384:                        # downscale so Manim isn't
-        im = im.resize((384, round(im.height * 384 / im.width)), PILImage.LANCZOS)
+    if im.width > 512:                        # downscale so Manim isn't
+        im = im.resize((512, round(im.height * 512 / im.width)), PILImage.LANCZOS)
+    im = im.filter(ImageFilter.UnsharpMask(radius=1.6, percent=110, threshold=2))  # crisp
     im.save(color_out)
     g = ImageOps.grayscale(im).convert("RGB")        # locked = greyscale ...
     g = ImageEnhance.Brightness(g).enhance(0.82)      # ... slightly dimmed
@@ -326,11 +327,11 @@ class DivinityIndex(Scene):
         # =================================================================
         # CRT OVERLAYS  (top)
         # =================================================================
-        scan = gf("07_Effects/crt_scanlines.png").scale_to_fit_height(8.0).set_z_index(30).set_opacity(0.22)
-        vign = gf("07_Effects/vignette_overlay.png", 768).scale_to_fit_height(8.0).set_z_index(29).set_opacity(0.75)
-        noise1 = gf("07_Effects/noise_overlay_01.png", 512).scale_to_fit_height(8.0).set_z_index(31)
-        noise2 = gf("07_Effects/noise_overlay_02.png", 512).scale_to_fit_height(8.0).set_z_index(31)
-        NOISE = 0.06
+        scan = gf("07_Effects/crt_scanlines.png").scale_to_fit_height(8.0).set_z_index(30).set_opacity(0.16)
+        vign = gf("07_Effects/vignette_overlay.png", 768).scale_to_fit_height(8.0).set_z_index(29).set_opacity(0.72)
+        noise1 = gf("07_Effects/noise_overlay_01.png", 768).scale_to_fit_height(8.0).set_z_index(31)
+        noise2 = gf("07_Effects/noise_overlay_02.png", 768).scale_to_fit_height(8.0).set_z_index(31)
+        NOISE = 0.03
 
         def noise_upd(m):
             on = int(clock.get_value() * 11) % 2
@@ -355,8 +356,15 @@ class DivinityIndex(Scene):
         # =================================================================
         # SEQUENCE
         # =================================================================
-        self.add_sound(snd("crt_hum.wav"), gain=-14)
-        self.add_sound(snd("dark_drone.wav"), gain=-19)
+        # continuous ambient background, tiled so it never drops out
+        def bed(name, gain, seg):
+            t = 0.0
+            while t < 95.0:
+                self.add_sound(snd(name), time_offset=t, gain=gain)
+                t += seg
+        bed("ambient.wav", -11, 52)        # main atmospheric bed
+        bed("dark_drone.wav", -16, 22)     # low tonal layer
+        bed("crt_hum.wav", -20, 12)        # faint CRT hum
 
         # chrome appears immediately, then cards load in fast (~1s)
         self.add(frame, vign, scan, drift, flick, noise1, noise2)

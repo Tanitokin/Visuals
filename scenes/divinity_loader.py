@@ -1,13 +1,17 @@
-"""divinity_loader.py - ARCHIVE ACCESS PROTOCOL loading screen.
+"""divinity_loader.py - ARTIFICIAL DIVINITY INDEX // ARCHIVE EDITION boot.
 
-A short (~5s) corporate / black-budget archive boot that plays BEFORE the
-ARTIFICIAL DIVINITY INDEX selector. Dark navy, pale green-white text, a cool
-green-cyan glow; a centred system title with a small classified-division
-emblem to its left, a subtitle, one loading bar, three status lines that
-appear one by one, and a small corporate footer. Ends on ACCESS GRANTED and a
-clean flash to black (cuts straight into the selector).
+A clean, premium OS-style boot screen (in the spirit of a polished XP-era
+loader) that plays before the ARTIFICIAL DIVINITY INDEX selector:
 
-Font: TheSansMonoSCd.  CRT overlays + SFX reused from assets/.
+  - an app-icon tile with a red targeting reticle, beside the system title
+  - title (white) with "INDEX" picked out in blue, soft glow
+  - "ARCHIVE EDITION" subtitle flanked by flourish lines
+  - a glossy segmented loading bar
+  - three status lines with circle markers, activating one by one
+  - a three-column corporate footer with a live STATUS field
+  - ACCESS GRANTED, then a clean flash to black (cuts into the selector)
+
+Textures are static and even (no random noise / flicker). Font: TheSansMonoSCd.
 
 Render:
     ./.venv/bin/manim -qh --fps 30 scenes/divinity_loader.py DivinityLoader
@@ -23,12 +27,15 @@ from PIL import Image as PILImage
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from crt_style import snd
 
-# --- Corporate palette (cool, controlled) ---------------------------------
-NAVY   = "#060A12"   # very dark navy-black
-TXT    = "#E8F4EE"   # pale green-white
-ACCENT = "#54DCB4"   # cool green-cyan
-DIM    = "#5C8579"   # muted gray-green
-DIMMER = "#33514A"
+# --- Palette (deep navy, white + blue, one red accent) --------------------
+BG       = "#070B14"
+WHITE    = "#EAF1FF"
+BLUE     = "#3E82F7"
+BLUE_BRT = "#8FBAFF"
+RED      = "#FF3A3A"
+DIM      = "#56678A"
+DIMMER   = "#36425C"
+TILE     = "#0C1322"
 
 FONT = "TheSansMonoSCd"
 
@@ -49,153 +56,188 @@ def gf(rel, target_w=1280):
     return ImageMobject(out)
 
 
-def emblem():
-    """A simple, elegant classified-division mark: hexagon + inscribed
-    triangle + centre dot.  Geometric and corporate, not occult."""
-    hexa = RegularPolygon(6, start_angle=PI / 2, radius=0.36).set_stroke(ACCENT, 2.6)
-    inner = RegularPolygon(6, start_angle=PI / 2, radius=0.215).set_stroke(ACCENT, 1.3, opacity=0.55)
-    tri = Triangle().scale(0.135).set_stroke(TXT, 1.8).set_fill(opacity=0).shift(UP * 0.02)
-    dot = Dot(radius=0.028, color=TXT)
-    halo = hexa.copy().set_stroke(ACCENT, 7, 0.14)
-    return VGroup(halo, hexa, inner, tri, dot)
-
-
 class DivinityLoader(Scene):
     def construct(self):
-        self.camera.background_color = NAVY
+        self.camera.background_color = BG
         clock = ValueTracker(0.0)
         clock.add_updater(lambda m, dt: m.increment_value(dt))
         self.add(clock)
 
-        def T(s, size, color=TXT, weight=NORMAL):
-            return Text(s, font=FONT, font_size=size, color=color, weight=weight)
+        def T(s, size, color=WHITE, **kw):
+            return Text(s, font=FONT, font_size=size, color=color, **kw)
 
-        # --- soft centre glow (clean glow, very subtle) ------------------
-        bloom = Ellipse(width=9, height=5, stroke_width=0, fill_color=ACCENT,
-                        fill_opacity=0.05).move_to([0, 0.4, 0]).set_z_index(-5)
+        # =================================================================
+        # BACKGROUND  (static, even textures only)
+        # =================================================================
+        glow_c = Ellipse(width=11, height=6, stroke_width=0, fill_color=BLUE,
+                         fill_opacity=0.06).move_to([0, 0.6, 0]).set_z_index(-6)
+        vign = gf("07_Effects/vignette_overlay.png", 768).scale_to_fit_height(8.0).set_z_index(40).set_opacity(0.5)
+        scan = gf("07_Effects/crt_scanlines.png", 1920).scale_to_fit_height(8.0).set_z_index(41).set_opacity(0.10)
+        grain = gf("07_Effects/noise_overlay_01.png", 768).scale_to_fit_height(8.0).set_z_index(42).set_opacity(0.018)
 
-        # --- title + emblem (emblem to the LEFT of a centred title) ------
-        title = T("ARTIFICIAL DIVINITY INDEX", 40, TXT).scale_to_fit_width(7.4).move_to([0, 1.5, 0])
-        tg = title.copy().set_color(ACCENT).set_opacity(0.0)
-        tg.add_updater(lambda m: m.set_opacity(0.10 + 0.06 * (0.5 + 0.5 * np.sin(clock.get_value() * 2.2))))
-        em = emblem().scale_to_fit_height(0.72).move_to([title.get_left()[0] - 0.62, 1.5, 0])
-        subtitle = T("ARCHIVE ACCESS PROTOCOL", 21, DIM).move_to([0, 0.92, 0])
-        # letter-spacing-ish divider under subtitle
-        sdiv = Line([-2.4, 0.66, 0], [2.4, 0.66, 0], color=DIMMER, stroke_width=1)
+        # =================================================================
+        # EMBLEM TILE  (app icon: rounded tile + red targeting reticle)
+        # =================================================================
+        tile = RoundedRectangle(width=1.0, height=1.0, corner_radius=0.2,
+                                stroke_color=BLUE_BRT, stroke_width=1.6,
+                                fill_color=TILE, fill_opacity=1)
+        tile_glow = RoundedRectangle(width=1.0, height=1.0, corner_radius=0.2,
+                                     stroke_color=WHITE, stroke_width=4, fill_opacity=0).set_stroke(opacity=0.10)
+        rg = Circle(radius=0.30, stroke_color=RED, stroke_width=9).set_stroke(opacity=0.22)
+        ro = Circle(radius=0.30, stroke_color=RED, stroke_width=2.4)
+        cross = VGroup()
+        for a in [0, 90, 180, 270]:
+            v = np.array([np.cos(a * DEGREES), np.sin(a * DEGREES), 0])
+            cross.add(Line(v * 0.13, v * 0.30, color=RED, stroke_width=2.2))
+        cdot = Dot(radius=0.045, color="#FFE0E0")
+        reticle = VGroup(rg, ro, cross, cdot)
 
-        # --- loading bar -------------------------------------------------
-        bar_w, bar_y = 6.2, 0.12
-        track = RoundedRectangle(width=bar_w + 0.08, height=0.17, corner_radius=0.05,
-                                 stroke_color=DIM, stroke_width=1.3, fill_opacity=0).move_to([0, bar_y, 0])
+        def reticle_pulse(m):
+            p = 0.5 + 0.5 * np.sin(clock.get_value() * 2.4)
+            rg.set_stroke(RED, 9, 0.14 + 0.16 * p)
+        rg.add_updater(reticle_pulse)
+        emblem = VGroup(tile_glow, tile, reticle)
+
+        # =================================================================
+        # TITLE + SUBTITLE
+        # =================================================================
+        title = T("ARTIFICIAL DIVINITY INDEX", 38, WHITE, t2c={"INDEX": BLUE})
+        title.scale_to_fit_width(6.7)
+        tglow = title.copy().set_color(BLUE_BRT).set_opacity(0.0)
+        tglow.add_updater(lambda m: m.set_opacity(0.16 + 0.05 * (0.5 + 0.5 * np.sin(clock.get_value() * 1.8))))
+
+        head = VGroup(emblem.scale_to_fit_height(1.06), title).arrange(RIGHT, buff=0.42).move_to([0, 1.55, 0])
+        tglow.move_to(title.get_center())
+
+        subtitle = T("A R C H I V E   E D I T I O N", 17, WHITE).set_opacity(0.9)
+        subtitle.move_to([0, 0.78, 0])
+        sl, sr = subtitle.get_left()[0], subtitle.get_right()[0]
+        fl_l = VGroup(Line([sl - 1.05, 0.78, 0], [sl - 0.28, 0.78, 0], color=BLUE, stroke_width=1.4),
+                      Dot([sl - 0.18, 0.78, 0], radius=0.022, color=BLUE))
+        fl_r = VGroup(Line([sr + 1.05, 0.78, 0], [sr + 0.28, 0.78, 0], color=BLUE, stroke_width=1.4),
+                      Dot([sr + 0.18, 0.78, 0], radius=0.022, color=BLUE))
+
+        # =================================================================
+        # SEGMENTED LOADING BAR  (glossy XP-style blocks)
+        # =================================================================
+        bar_w, bar_y = 6.8, 0.0
+        bar_l = -bar_w / 2
+        container = RoundedRectangle(width=bar_w + 0.16, height=0.42, corner_radius=0.08,
+                                     stroke_color=DIM, stroke_width=1.4, fill_color="#070C16",
+                                     fill_opacity=1).move_to([0, bar_y, 0])
+        cont_glow = RoundedRectangle(width=bar_w + 0.16, height=0.42, corner_radius=0.08,
+                                     stroke_color=BLUE, stroke_width=4, fill_opacity=0).set_stroke(opacity=0.10)
         prog = ValueTracker(0.0)
+        NSEG = 22
+        seg_w = bar_w / NSEG
 
-        def make_fill():
-            w = max(0.0008, bar_w * prog.get_value())
-            cx = -bar_w / 2 + w / 2
-            fill = Rectangle(width=w, height=0.12, stroke_width=0, fill_color=ACCENT,
-                             fill_opacity=1).move_to([cx, bar_y, 0])
-            glow = Rectangle(width=w, height=0.12, stroke_width=0, fill_opacity=0
-                             ).move_to([cx, bar_y, 0]).set_stroke(ACCENT, 7, 0.22)
-            return VGroup(glow, fill)
-        fill = always_redraw(make_fill)
-        pct = always_redraw(lambda: T(f"{int(round(prog.get_value()*100)):02d}%", 16, DIM)
-                            .move_to([bar_w / 2 + 0.5, bar_y, 0]))
+        def make_blocks():
+            edge = prog.get_value() * NSEG
+            g = VGroup()
+            for k in range(NSEG):
+                if k < edge - 0.001:
+                    cx = bar_l + (k + 0.5) * seg_w
+                    blk = Rectangle(width=seg_w * 0.72, height=0.24, stroke_width=0,
+                                    fill_color=BLUE, fill_opacity=1).move_to([cx, bar_y, 0])
+                    gloss = Rectangle(width=seg_w * 0.72, height=0.10, stroke_width=0,
+                                      fill_color=BLUE_BRT, fill_opacity=0.55).move_to([cx, bar_y + 0.06, 0])
+                    g.add(blk, gloss)
+            if len(g):
+                fw = bar_w * prog.get_value()
+                halo = Rectangle(width=fw, height=0.24, stroke_width=0, fill_opacity=0
+                                 ).move_to([bar_l + fw / 2, bar_y, 0]).set_stroke(BLUE, 9, 0.22)
+                g.add(halo)
+            return g
+        blocks = always_redraw(make_blocks)
 
-        # --- three status lines (built hidden, revealed one by one) ------
+        # =================================================================
+        # STATUS LINES  (circle marker + text; activate one by one)
+        # =================================================================
         STATUS = ["Initializing subject registry",
                   "Mounting restricted dossiers",
                   "Verifying divinity index"]
-        line_y = [-0.62, -0.99, -1.36]
-        lines = []
+        ly = [-0.78, -1.16, -1.54]
+        rows = []
         for i, s in enumerate(STATUS):
-            mark = T(">", 18, ACCENT)
-            txt = T(s, 19, TXT)
-            ok = T("OK", 16, ACCENT)
-            row = VGroup(mark, txt).arrange(RIGHT, buff=0.22)
-            row.move_to([0, line_y[i], 0]).align_to([-2.85, 0, 0], LEFT)
-            ok.move_to([2.95, line_y[i], 0]).set_opacity(0.0)
-            grp = VGroup(row, ok).set_opacity(1.0)
-            grp.set_opacity(0.0)
-            lines.append({"grp": grp, "row": row, "mark": mark, "txt": txt, "ok": ok})
-
-        # --- ACCESS GRANTED (hidden until the end) -----------------------
-        ag = T("ACCESS GRANTED", 30, ACCENT).move_to([0, -0.99, 0]).set_opacity(0.0)
-        ag_glow = ag.copy().set_stroke(ACCENT, 6, 0.0).set_opacity(0.0)
-
-        # --- corporate footer --------------------------------------------
-        f1 = T("A.D.I. ARCHIVE BUILD v1.0.4", 15, DIM)
-        f2 = T("BLACKSITE RESEARCH DIVISION", 14, DIMMER)
-        f3 = T("INTERNAL USE ONLY", 13, DIMMER)
-        footer = VGroup(f1, f2, f3).arrange(DOWN, buff=0.12).move_to([0, -3.18, 0])
-
-        # --- CRT overlays (subtle) ---------------------------------------
-        scan = gf("07_Effects/crt_scanlines.png").scale_to_fit_height(8.0).set_z_index(30).set_opacity(0.12)
-        vign = gf("07_Effects/vignette_overlay.png", 768).scale_to_fit_height(8.0).set_z_index(29).set_opacity(0.62)
-        noise1 = gf("07_Effects/noise_overlay_01.png", 512).scale_to_fit_height(8.0).set_z_index(31)
-        noise2 = gf("07_Effects/noise_overlay_02.png", 512).scale_to_fit_height(8.0).set_z_index(31)
-
-        def noise_upd(m):
-            on = int(clock.get_value() * 10) % 2
-            noise1.set_opacity(0.022 if on == 0 else 0.0)
-            noise2.set_opacity(0.022 if on == 1 else 0.0)
-        noise1.add_updater(noise_upd)
-
-        flick = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=NAVY, fill_opacity=0.0).set_z_index(33)
-        flick.add_updater(lambda m: m.set_opacity(0.012 + 0.018 * (0.5 + 0.5 * np.sin(clock.get_value() * 5.5))))
+            mk = Circle(radius=0.075, stroke_color=DIM, stroke_width=1.8, fill_color=BLUE, fill_opacity=0.0)
+            mglow = Circle(radius=0.075, stroke_color=BLUE, stroke_width=5, fill_opacity=0).set_stroke(opacity=0.0)
+            txt = T(s, 19, DIM)
+            VGroup(mk, txt).arrange(RIGHT, buff=0.28).move_to([0, ly[i], 0]).align_to([-2.95, 0, 0], LEFT)
+            mglow.move_to(mk.get_center())
+            rows.append({"mk": mk, "mglow": mglow, "txt": txt})
 
         # =================================================================
-        # SEQUENCE  (~5s)
+        # FOOTER  (three columns) + live STATUS field
         # =================================================================
-        self.add_sound(snd("dark_drone.wav"), gain=-17)
-        self.add_sound(snd("boot.wav"), gain=-9)
-        self.add(bloom, scan, vign, noise1, noise2, flick)
+        fy = -3.18
+        f_l1 = T("A.D.I. ARCHIVE EDITION v1.0.4", 15, DIM)
+        f_l2 = T("BUILD 667.01.13", 15, BLUE)
+        fl_col = VGroup(f_l1, f_l2).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
+        fl_col.move_to([-6.65 + fl_col.width / 2, fy - 0.07, 0])
 
-        # the screen fades in already assembled
-        static = VGroup(em, title, subtitle, sdiv, track, pct, footer)
-        self.add(tg)
-        self.play(FadeIn(static), run_time=0.6, rate_func=smooth)
-        for ln in lines:
-            self.add(ln["grp"])
-        self.add(fill)
+        f_c1 = T("(C) 2001-2026  BLACKSITE RESEARCH DIVISION", 14, DIM)
+        f_c2 = T("ALL RIGHTS RESERVED", 13, DIMMER)
+        fc_col = VGroup(f_c1, f_c2).arrange(DOWN, buff=0.1).move_to([0, fy - 0.07, 0])
 
-        # short settle, then bar fills while the 3 lines appear one by one
-        self.add_sound(snd("riser.wav"), gain=-15)
-        self.wait(0.35)
+        f_r1 = T("ARTIFICIAL DIVINITY SUBSYSTEM", 15, DIM)
+        status_field = VGroup(T("STATUS: ", 15, DIM), T("BOOTING", 15, BLUE)).arrange(RIGHT, buff=0.12)
+        fr_col = VGroup(f_r1, status_field).arrange(DOWN, aligned_edge=RIGHT, buff=0.1)
+        fr_col.move_to([6.65 - fr_col.width / 2, fy - 0.07, 0])
 
-        def reveal(i, target, prev=None):
+        # =================================================================
+        # SEQUENCE  (~5s, clean and deterministic)
+        # =================================================================
+        self.add_sound(snd("dark_drone.wav"), gain=-18)
+        self.add_sound(snd("boot.wav"), gain=-10)
+        self.add(glow_c, vign, scan, grain)
+        self.add(tglow)
+
+        static = VGroup(emblem, title, subtitle, fl_l, fl_r, container, cont_glow,
+                        fl_col, fc_col, fr_col)
+        self.play(FadeIn(static), run_time=0.7, rate_func=smooth)
+        for r in rows:
+            self.add(r["mk"], r["mglow"], r["txt"])
+        self.add(blocks)
+        self.add_sound(snd("riser.wav"), gain=-16)
+        self.wait(0.3)
+
+        def activate(i, target, prev=None):
             self.add_sound(snd("ui_tick.wav"), gain=-12)
-            anims = [lines[i]["row"].animate.set_opacity(1.0),
+            anims = [rows[i]["txt"].animate.set_color(WHITE),
+                     rows[i]["mk"].animate.set_fill(BLUE, 1.0).set_stroke(BLUE, 1.8),
+                     rows[i]["mglow"].animate.set_stroke(BLUE, 5, 0.45),
                      prog.animate.set_value(target)]
             if prev is not None:
-                anims.append(lines[prev]["row"].animate.set_opacity(0.42))
-                anims.append(lines[prev]["ok"].animate.set_opacity(0.9))
-            self.play(*anims, run_time=0.85, rate_func=smooth)
+                anims += [rows[prev]["txt"].animate.set_color(DIM),
+                          rows[prev]["mglow"].animate.set_stroke(BLUE, 5, 0.0),
+                          rows[prev]["mk"].animate.set_fill(BLUE, 0.5)]
+            self.play(*anims, run_time=0.82, rate_func=smooth)
 
-        reveal(0, 0.36)
-        self.wait(0.15)
-        reveal(1, 0.70, prev=0)
-        self.wait(0.15)
-        reveal(2, 1.0, prev=1)
-        # last line completes
-        self.play(lines[2]["row"].animate.set_opacity(0.42),
-                  lines[2]["ok"].animate.set_opacity(0.9), run_time=0.3)
+        activate(0, 0.34)
+        self.wait(0.12)
+        activate(1, 0.69, prev=0)
+        self.wait(0.12)
+        activate(2, 1.0, prev=1)
+        self.play(rows[2]["mglow"].animate.set_stroke(BLUE, 5, 0.0),
+                  rows[2]["mk"].animate.set_fill(BLUE, 0.5),
+                  rows[2]["txt"].animate.set_color(DIM), run_time=0.3)
 
-        # ACCESS GRANTED
+        # STATUS: BOOTING -> ACCESS GRANTED
         self.add_sound(snd("access.wav"), gain=-5)
-        self.add(ag_glow)
-        ag.move_to([0, -2.05, 0]); ag_glow.move_to([0, -2.05, 0])
-        self.play(FadeIn(ag, scale=1.12),
-                  ag_glow.animate.set_stroke(ACCENT, 6, 0.22).set_opacity(1.0),
-                  run_time=0.4, rate_func=rush_from)
+        new_status = VGroup(T("STATUS: ", 15, DIM), T("READY", 15, BLUE_BRT)).arrange(RIGHT, buff=0.12)
+        new_status.move_to(status_field.get_right(), aligned_edge=RIGHT)
+        ag = T("ACCESS GRANTED", 26, WHITE, t2c={"GRANTED": BLUE_BRT}).move_to([0, -2.18, 0]).set_opacity(0.0)
+        self.play(FadeIn(ag, scale=1.1),
+                  Transform(status_field, new_status), run_time=0.4, rate_func=rush_from)
         self.wait(0.45)
 
-        # clean flash -> fade to black (cuts into the selector)
-        self.add_sound(snd("transition.wav"), gain=-8)
-        flash = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=TXT, fill_opacity=0.0).set_z_index(40)
+        # clean flash -> fade to black
+        self.add_sound(snd("transition.wav"), gain=-9)
+        flash = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=WHITE, fill_opacity=0.0).set_z_index(50)
         self.add(flash)
-        self.play(flash.animate.set_fill(TXT, 0.5), run_time=0.08, rate_func=linear)
-        black = Rectangle(width=15, height=8.6, stroke_width=0, fill_color="#000000", fill_opacity=0.0).set_z_index(41)
+        self.play(flash.animate.set_fill(WHITE, 0.45), run_time=0.08, rate_func=linear)
+        black = Rectangle(width=15, height=8.6, stroke_width=0, fill_color="#000000", fill_opacity=0.0).set_z_index(51)
         self.add(black)
-        self.play(flash.animate.set_fill(TXT, 0.0), black.animate.set_fill("#000000", 1.0),
-                  run_time=0.32, rate_func=smooth)
-        self.wait(0.25)
+        self.play(flash.animate.set_fill(WHITE, 0.0), black.animate.set_fill("#000000", 1.0),
+                  run_time=0.34, rate_func=smooth)
+        self.wait(0.22)

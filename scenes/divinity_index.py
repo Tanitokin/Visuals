@@ -84,8 +84,9 @@ STEP_Y = CARD_H + GAP_Y
 COL_X = [(-(COLS - 1) / 2 + c) * STEP_X for c in range(COLS)]
 ROW_Y = [GRID_CY + (ROWS - 1) / 2 * STEP_Y - r * STEP_Y for r in range(ROWS)]
 
-VIEW = 3.0        # seconds the subject is held (after fading back in) before the next
-FADE = 0.5        # smooth fade-to-black duration
+VIEW_BEFORE = 4.0   # seconds the subject is shown before the fade to black
+VIEW_AFTER = 3.0    # seconds held after fading back in, before passing to the next
+FADE = 0.9          # smooth fade-to-black duration (slow + smooth)
 
 
 def card_center(i):
@@ -392,13 +393,14 @@ class DivinityIndex(Scene):
             self.play(blk.animate.set_fill("#000000", 0.0), run_time=FADE, rate_func=smooth)
 
         def cycle(card):
-            # subject shown -> select click -> fade to black -> back with the SAME
-            # one selected -> hold 3s.  (Then the caller passes to the next.)
+            # subject shown + select click -> hold ~4s -> fade to black -> back with
+            # the SAME one selected -> hold ~3s.  (Then the caller passes to the next.)
             self.add_sound(snd("es_select_ok.wav"), gain=-9)
             self.flash_card(card)
+            self.wait(VIEW_BEFORE)
             fade_to_black()
             fade_back()
-            self.wait(VIEW)
+            self.wait(VIEW_AFTER)
 
         # ENTITY 01 (revealed by the card load above)
         panel_txt = build_panel_text(0)

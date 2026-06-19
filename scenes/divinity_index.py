@@ -2,11 +2,10 @@
 
 A premium, dark VHS/CRT "forbidden archive" interface for The Great Abyss video
 "The Most Horrifying Man-Made Gods in Fiction". A 2x5 grid of 10 entity cards;
-a green selection cursor steps 01 -> 10 (top row L->R, then bottom row L->R),
-holding ~3s on each with a soft pulsing glow, a faint scanline sweep over the
-active card and a slight zoom, while the others stay dimmed. Each jump is a
-digital "clink" + a 2-3 frame flash. A lower panel updates per subject. After
-Entity 10 a stronger glitch cuts to black.
+the selector steps 01 -> 10 (top row L->R, then bottom). The selected subject
+shows in colour with its name and a blinking videogame-style frame, while the
+others stay locked in black-and-white. Rhythm per subject: revealed ~4s ->
+a "click" -> fade to black -> next. A lower panel shows each subject's name.
 
 Title font: Halo. Body font: VCR OSD Mono. CRT overlays + SFX from assets/.
 
@@ -85,8 +84,8 @@ STEP_Y = CARD_H + GAP_Y
 COL_X = [(-(COLS - 1) / 2 + c) * STEP_X for c in range(COLS)]
 ROW_Y = [GRID_CY + (ROWS - 1) / 2 * STEP_Y - r * STEP_Y for r in range(ROWS)]
 
-HOLD = 2.0        # seconds a subject stays selected
-TRANS = 0.2       # clink transition time
+VIEW = 4.0        # seconds a subject is shown (selected) before the click
+FADE = 0.45       # fade-to-black duration between subjects
 
 
 def card_center(i):
@@ -135,9 +134,7 @@ class DivinityIndex(Scene):
         # =================================================================
         # BACKGROUND + FRAME + CHROME
         # =================================================================
-        grid = gf("01_Backgrounds/bg_grid_soft.png").scale_to_fit_height(8.0)
-        grid.set_z_index(-10).set_opacity(0.10)
-        frame = gf("02_UI_Frame/frame_full.png").scale_to_fit_height(7.74)
+        frame = gf("02_UI_Frame/frame_full.png", 1280).scale_to_fit_height(7.74)
         frame.set_z_index(6)
 
         # Title (Halo), centred, with a soft pulsing glow
@@ -329,9 +326,9 @@ class DivinityIndex(Scene):
         # CRT OVERLAYS  (top)
         # =================================================================
         scan = gf("07_Effects/crt_scanlines.png").scale_to_fit_height(8.0).set_z_index(30).set_opacity(0.22)
-        vign = gf("07_Effects/vignette_overlay.png", 1024).scale_to_fit_height(8.0).set_z_index(29).set_opacity(0.75)
-        noise1 = gf("07_Effects/noise_overlay_01.png", 768).scale_to_fit_height(8.0).set_z_index(31)
-        noise2 = gf("07_Effects/noise_overlay_02.png", 768).scale_to_fit_height(8.0).set_z_index(31)
+        vign = gf("07_Effects/vignette_overlay.png", 768).scale_to_fit_height(8.0).set_z_index(29).set_opacity(0.75)
+        noise1 = gf("07_Effects/noise_overlay_01.png", 512).scale_to_fit_height(8.0).set_z_index(31)
+        noise2 = gf("07_Effects/noise_overlay_02.png", 512).scale_to_fit_height(8.0).set_z_index(31)
         NOISE = 0.06
 
         def noise_upd(m):
@@ -361,7 +358,7 @@ class DivinityIndex(Scene):
         self.add_sound(snd("dark_drone.wav"), gain=-19)
 
         # chrome appears immediately, then cards load in fast (~1s)
-        self.add(grid, frame, vign, scan, drift, flick, noise1, noise2)
+        self.add(frame, vign, scan, drift, flick, noise1, noise2)
         self.add(title_glow, title, nav, clk, rec_t, rec_dot)
         self.add(panel_glow, panel, play, sel_label)
 
@@ -382,39 +379,51 @@ class DivinityIndex(Scene):
         for op, rt in [(0.45, 0.05), (1.0, 0.06), (0.7, 0.05), (1.0, 0.06)]:
             self.play(title.animate.set_opacity(op), run_time=rt)
 
-        # cursor + sweep + first panel come alive
+        # cursor + sweep + the fade-to-black overlay come alive
         self.add(glow, border, ticks, sweep)
+        blk = Rectangle(width=15, height=8.6, stroke_width=0, fill_color="#000000",
+                        fill_opacity=0.0).set_z_index(44)
+        self.add(blk)
+
+        def fade_out():                       # to black
+            self.play(blk.animate.set_fill("#000000", 1.0), run_time=FADE, rate_func=smooth)
+
+        def fade_in():                        # back from black
+            self.play(blk.animate.set_fill("#000000", 0.0), run_time=FADE, rate_func=smooth)
+
+        def click(card, last=False):          # the "click" beat at the 4s mark
+            self.add_sound(snd("es_disconnect.wav") if last else snd("es_system_beep.wav"),
+                           gain=-6 if last else -8)
+            self.flash_card(card)
+
+        # Rhythm per subject:  reveal -> hold ~4s -> click -> fade to black.
+        # ENTITY 01 is revealed by the card load above.
         panel_txt = build_panel_text(0)
         self.add(panel_txt)
         sel["i"], sel["t0"] = 0, clock.get_value()
         select(cards[0])
-        self.add_sound(snd("es_select_ok.wav"), gain=-10)
-        self.flash_card(cards[0])
-        self.wait(HOLD)
+        self.wait(VIEW)
+        click(cards[0], last=(len(cards) == 1))
+        fade_out()
 
-        # step through the rest
         for i in range(1, len(cards)):
             prev, cur = cards[i - 1], cards[i]
-
-            self.add_sound(snd("es_select_ok.wav"), gain=-10)   # selection sound
-            self.add_sound(snd("ui_tick.wav"), gain=-16)
+            # swap to the next subject while the screen is black
+            deselect(prev)
             old_txt = panel_txt
             panel_txt = build_panel_text(i)
-
-            # lock the previous (back to b/w), jump cursor, reveal the new in colour
-            deselect(prev)
-            place_cursor(cur["cx"], cur["cy"])
-            sel["i"], sel["cx"], sel["cy"], sel["t0"] = i, cur["cx"], cur["cy"], clock.get_value()
-            select(cur)
             self.remove(old_txt)
+            place_cursor(cur["cx"], cur["cy"])
+            sel["i"], sel["cx"], sel["cy"] = i, cur["cx"], cur["cy"]
+            select(cur)
             self.add(panel_txt)
-            self.flash_card(cur)
-            self.wait(HOLD)
+            fade_in()
+            sel["t0"] = clock.get_value()     # restart the scanline sweep on reveal
+            self.wait(VIEW)
+            click(cur, last=(i == len(cards) - 1))
+            fade_out()
 
-        # =================================================================
-        # FINAL GLITCH -> CUT TO BLACK
-        # =================================================================
-        self.final_glitch(cards[-1])
+        self.wait(0.7)                        # hold on black
 
     # ---------------------------------------------------------------------
     def flash_card(self, card):
@@ -426,30 +435,3 @@ class DivinityIndex(Scene):
         self.play(fl.animate.set_fill(GREEN_BRT, 0.55), run_time=1 / 30, rate_func=linear)
         self.play(fl.animate.set_fill(GREEN, 0.0), run_time=2 / 30, rate_func=linear)
         self.remove(fl)
-
-    def final_glitch(self, card):
-        clock = self.clock
-        self.add_sound(snd("glitch.wav"), gain=-7)
-        self.add_sound(snd("boom.wav"), gain=-6)
-        g = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=GREEN, fill_opacity=0.0).set_z_index(40)
-        r = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=RED, fill_opacity=0.0).set_z_index(41)
-        self.add(g, r)
-        # rapid green/red jitter strips
-        for _ in range(6):
-            yy = np.random.uniform(-2.5, 2.5)
-            strip = Rectangle(width=15, height=np.random.uniform(0.2, 0.7), stroke_width=0,
-                              fill_color=np.random.choice([GREEN_BRT, RED]),
-                              fill_opacity=0.5).move_to([np.random.uniform(-0.3, 0.3), yy, 0]).set_z_index(42)
-            self.add(strip)
-            self.play(g.animate.set_fill(GREEN, np.random.uniform(0.04, 0.20)),
-                      r.animate.set_fill(RED, np.random.uniform(0.0, 0.16)),
-                      run_time=1 / 30, rate_func=linear)
-            self.remove(strip)
-        self.add_sound(snd("es_disconnect.wav"), gain=-5)
-        black = Rectangle(width=15, height=8.6, stroke_width=0, fill_color="#000000",
-                          fill_opacity=0.0).set_z_index(45)
-        self.add(black)
-        self.play(black.animate.set_fill("#000000", 1.0),
-                  g.animate.set_fill(GREEN, 0.0), r.animate.set_fill(RED, 0.0),
-                  run_time=0.28)
-        self.wait(0.3)

@@ -226,7 +226,7 @@ class DivinityLoader(Scene):
         self.add_sound(snd("access.wav"), gain=-5)
         new_status = VGroup(T("STATUS: ", 15, DIM), T("READY", 15, BLUE_BRT)).arrange(RIGHT, buff=0.12)
         new_status.move_to(status_field.get_right(), aligned_edge=RIGHT)
-        ag = T("ACCESS GRANTED", 26, WHITE, t2c={"GRANTED": BLUE_BRT}).move_to([0, -2.18, 0]).set_opacity(0.0)
+        ag = T("ACCESS GRANTED", 26, WHITE, t2c={"GRANTED": BLUE_BRT}).move_to([0, -2.18, 0])
         self.play(FadeIn(ag, scale=1.1),
                   Transform(status_field, new_status), run_time=0.4, rate_func=rush_from)
         self.wait(0.45)

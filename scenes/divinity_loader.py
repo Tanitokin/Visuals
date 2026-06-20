@@ -28,7 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from crt_style import snd
 
 # --- Palette (deep navy, white + blue, one red accent) --------------------
-BG       = "#070B14"
+BG       = "#000000"
 WHITE    = "#EAF1FF"
 BLUE     = "#3E82F7"
 BLUE_BRT = "#8FBAFF"

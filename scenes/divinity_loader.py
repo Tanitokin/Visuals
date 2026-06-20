@@ -13,8 +13,17 @@ loader) that plays before the ARTIFICIAL DIVINITY INDEX selector:
 
 Textures are static and even (no random noise / flicker). Font: TheSansMonoSCd.
 
-Render:
+Render, then add the premium glow (bloom) + trim in post (screen-blend must be
+done in RGB - format=gbrp - or YUV chroma washes the frame):
+
     ./.venv/bin/manim -qh --fps 30 scenes/divinity_loader.py DivinityLoader
+    ffmpeg -i media/videos/divinity_loader/1080p30/DivinityLoader.mp4 -t 5.5 \
+      -filter_complex "[0:v]format=gbrp,split=3[b][g1][g2];\
+        [g1]gblur=sigma=4[x];[g2]gblur=sigma=15[y];\
+        [b][x]blend=all_mode=screen:all_opacity=0.55[t];\
+        [t][y]blend=all_mode=screen:all_opacity=0.5[v]" -map "[v]" \
+      -af "afade=t=out:st=5.2:d=0.3" -c:v libx264 -crf 16 -pix_fmt yuv420p \
+      -c:a aac -b:a 192k DivinityLoader_final.mp4
 """
 
 import os

@@ -69,8 +69,6 @@ class DivinityLoader(Scene):
         # =================================================================
         # BACKGROUND  (static, even textures only)
         # =================================================================
-        glow_c = Ellipse(width=11, height=6, stroke_width=0, fill_color=BLUE,
-                         fill_opacity=0.06).move_to([0, 0.6, 0]).set_z_index(-6)
         vign = gf("07_Effects/vignette_overlay.png", 768).scale_to_fit_height(8.0).set_z_index(40).set_opacity(0.45)
         scan = gf("07_Effects/crt_scanlines.png", 1920).scale_to_fit_height(8.0).set_z_index(41).set_opacity(0.06)
 
@@ -187,7 +185,7 @@ class DivinityLoader(Scene):
         # SEQUENCE  (~5s, clean and deterministic)
         # =================================================================
         self.add_sound(snd("dark_drone.wav"), gain=-18)
-        self.add(glow_c, vign, scan)
+        self.add(vign, scan)
         self.add(tglow)
 
         static = VGroup(emblem, title, subtitle, fl_l, fl_r, container, cont_glow,

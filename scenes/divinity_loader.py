@@ -71,9 +71,8 @@ class DivinityLoader(Scene):
         # =================================================================
         glow_c = Ellipse(width=11, height=6, stroke_width=0, fill_color=BLUE,
                          fill_opacity=0.06).move_to([0, 0.6, 0]).set_z_index(-6)
-        vign = gf("07_Effects/vignette_overlay.png", 768).scale_to_fit_height(8.0).set_z_index(40).set_opacity(0.5)
-        scan = gf("07_Effects/crt_scanlines.png", 1920).scale_to_fit_height(8.0).set_z_index(41).set_opacity(0.10)
-        grain = gf("07_Effects/noise_overlay_01.png", 768).scale_to_fit_height(8.0).set_z_index(42).set_opacity(0.018)
+        vign = gf("07_Effects/vignette_overlay.png", 768).scale_to_fit_height(8.0).set_z_index(40).set_opacity(0.45)
+        scan = gf("07_Effects/crt_scanlines.png", 1920).scale_to_fit_height(8.0).set_z_index(41).set_opacity(0.06)
 
         # =================================================================
         # EMBLEM TILE  (app icon: rounded tile + red targeting reticle)
@@ -103,8 +102,8 @@ class DivinityLoader(Scene):
         # =================================================================
         title = T("ARTIFICIAL DIVINITY INDEX", 38, WHITE, t2c={"INDEX": BLUE})
         title.scale_to_fit_width(6.7)
-        tglow = title.copy().set_color(BLUE_BRT).set_opacity(0.0)
-        tglow.add_updater(lambda m: m.set_opacity(0.16 + 0.05 * (0.5 + 0.5 * np.sin(clock.get_value() * 1.8))))
+        tglow = title.copy().set_color(BLUE_BRT).scale(1.03).set_opacity(0.0)
+        tglow.add_updater(lambda m: m.set_opacity(0.22 + 0.08 * (0.5 + 0.5 * np.sin(clock.get_value() * 1.8))))
 
         head = VGroup(emblem.scale_to_fit_height(1.06), title).arrange(RIGHT, buff=0.42).move_to([0, 1.55, 0])
         tglow.move_to(title.get_center())
@@ -188,8 +187,7 @@ class DivinityLoader(Scene):
         # SEQUENCE  (~5s, clean and deterministic)
         # =================================================================
         self.add_sound(snd("dark_drone.wav"), gain=-18)
-        self.add_sound(snd("boot.wav"), gain=-10)
-        self.add(glow_c, vign, scan, grain)
+        self.add(glow_c, vign, scan)
         self.add(tglow)
 
         static = VGroup(emblem, title, subtitle, fl_l, fl_r, container, cont_glow,
@@ -198,11 +196,11 @@ class DivinityLoader(Scene):
         for r in rows:
             self.add(r["mk"], r["mglow"], r["txt"])
         self.add(blocks)
-        self.add_sound(snd("riser.wav"), gain=-16)
+        self.add_sound(snd("es_loading_slow.wav"), gain=-10)
         self.wait(0.3)
 
         def activate(i, target, prev=None):
-            self.add_sound(snd("ui_tick.wav"), gain=-12)
+            self.add_sound(snd("es_system_beep.wav"), gain=-11)
             anims = [rows[i]["txt"].animate.set_color(WHITE),
                      rows[i]["mk"].animate.set_fill(BLUE, 1.0).set_stroke(BLUE, 1.8),
                      rows[i]["mglow"].animate.set_stroke(BLUE, 5, 0.45),
@@ -223,7 +221,7 @@ class DivinityLoader(Scene):
                   rows[2]["txt"].animate.set_color(DIM), run_time=0.3)
 
         # STATUS: BOOTING -> ACCESS GRANTED
-        self.add_sound(snd("access.wav"), gain=-5)
+        self.add_sound(snd("es_select_ok.wav"), gain=-6)
         new_status = VGroup(T("STATUS: ", 15, DIM), T("READY", 15, BLUE_BRT)).arrange(RIGHT, buff=0.12)
         new_status.move_to(status_field.get_right(), aligned_edge=RIGHT)
         ag = T("ACCESS GRANTED", 26, WHITE, t2c={"GRANTED": BLUE_BRT}).move_to([0, -2.18, 0])

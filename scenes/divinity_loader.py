@@ -1,29 +1,17 @@
 """divinity_loader.py - ARTIFICIAL DIVINITY INDEX // ARCHIVE EDITION boot.
 
-A clean, premium OS-style boot screen (in the spirit of a polished XP-era
-loader) that plays before the ARTIFICIAL DIVINITY INDEX selector:
+A clean, high-contrast OS-style boot screen that plays before the selector:
+pure-black background, a saturated blue accent, a centred title (Oxanium) with
+a crisp neon glow (stroke halos - keeps the black pure, no bloom wash), an
+"ARCHIVE EDITION" subtitle, a glossy segmented loading bar, three status lines
+with circle markers, a three-column corporate footer, and ACCESS GRANTED.
 
-  - an app-icon tile with a red targeting reticle, beside the system title
-  - title (white) with "INDEX" picked out in blue, soft glow
-  - "ARCHIVE EDITION" subtitle flanked by flourish lines
-  - a glossy segmented loading bar
-  - three status lines with circle markers, activating one by one
-  - a three-column corporate footer with a live STATUS field
-  - ACCESS GRANTED, then a clean flash to black (cuts into the selector)
+Title font: Oxanium (Bold).  Body font: TheSansMonoSCd.  SFX from assets/.
 
-Textures are static and even (no random noise / flicker). Font: TheSansMonoSCd.
-
-Render, then add the premium glow (bloom) + trim in post (screen-blend must be
-done in RGB - format=gbrp - or YUV chroma washes the frame):
-
+Render (then just trim to length + audio fade - NO post bloom):
     ./.venv/bin/manim -qh --fps 30 scenes/divinity_loader.py DivinityLoader
-    ffmpeg -i media/videos/divinity_loader/1080p30/DivinityLoader.mp4 -t 5.5 \
-      -filter_complex "[0:v]format=gbrp,split=3[b][g1][g2];\
-        [g1]gblur=sigma=4[x];[g2]gblur=sigma=15[y];\
-        [b][x]blend=all_mode=screen:all_opacity=0.55[t];\
-        [t][y]blend=all_mode=screen:all_opacity=0.5[v]" -map "[v]" \
-      -af "afade=t=out:st=5.2:d=0.3" -c:v libx264 -crf 16 -pix_fmt yuv420p \
-      -c:a aac -b:a 192k DivinityLoader_final.mp4
+    ffmpeg -i <raw>.mp4 -t 5.5 -af "afade=t=out:st=5.2:d=0.3" \
+        -c:v libx264 -crf 14 -pix_fmt yuv420p -c:a aac -b:a 192k <final>.mp4
 """
 
 import os
@@ -36,16 +24,15 @@ from PIL import Image as PILImage
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from crt_style import snd
 
-# --- Palette (deep navy, white + blue, one red accent) --------------------
+# --- High-contrast palette (pure black, saturated blue) -------------------
 BG       = "#000000"
-WHITE    = "#EAF1FF"
-BLUE     = "#3E82F7"
-BLUE_BRT = "#8FBAFF"
-RED      = "#FF3A3A"
-DIM      = "#56678A"
-DIMMER   = "#36425C"
-TILE     = "#0C1322"
+WHITE    = "#FFFFFF"
+BLUE     = "#246BFF"     # vivid, saturated
+BLUE_BRT = "#7FB2FF"
+DIM      = "#5A6E92"
+DIMMER   = "#33425E"
 
+TITLE_FONT = "Ethnocentric"
 FONT = "TheSansMonoSCd"
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -75,64 +62,38 @@ class DivinityLoader(Scene):
         def T(s, size, color=WHITE, **kw):
             return Text(s, font=FONT, font_size=size, color=color, **kw)
 
-        # =================================================================
-        # BACKGROUND  (static, even textures only)
-        # =================================================================
-        vign = gf("07_Effects/vignette_overlay.png", 768).scale_to_fit_height(8.0).set_z_index(40).set_opacity(0.45)
-        scan = gf("07_Effects/crt_scanlines.png", 1920).scale_to_fit_height(8.0).set_z_index(41).set_opacity(0.06)
+        # --- very subtle CRT scanlines (keep it clean; pure black bg) ----
+        scan = gf("07_Effects/crt_scanlines.png", 1920).scale_to_fit_height(8.0).set_z_index(40).set_opacity(0.06)
 
         # =================================================================
-        # EMBLEM TILE  (app icon: rounded tile + red targeting reticle)
+        # TITLE  (Oxanium, centred, crisp white + blue "INDEX", neon glow)
         # =================================================================
-        tile = RoundedRectangle(width=1.0, height=1.0, corner_radius=0.2,
-                                stroke_color=BLUE_BRT, stroke_width=1.6,
-                                fill_color=TILE, fill_opacity=1)
-        tile_glow = RoundedRectangle(width=1.0, height=1.0, corner_radius=0.2,
-                                     stroke_color=WHITE, stroke_width=4, fill_opacity=0).set_stroke(opacity=0.10)
-        rg = Circle(radius=0.30, stroke_color=RED, stroke_width=9).set_stroke(opacity=0.22)
-        ro = Circle(radius=0.30, stroke_color=RED, stroke_width=2.4)
-        cross = VGroup()
-        for a in [0, 90, 180, 270]:
-            v = np.array([np.cos(a * DEGREES), np.sin(a * DEGREES), 0])
-            cross.add(Line(v * 0.13, v * 0.30, color=RED, stroke_width=2.2))
-        cdot = Dot(radius=0.045, color="#FFE0E0")
-        reticle = VGroup(rg, ro, cross, cdot)
+        title = Text("ARTIFICIAL DIVINITY INDEX", font=TITLE_FONT,
+                     color=WHITE).scale_to_fit_width(8.8).move_to([0, 1.45, 0])
+        # neon glow = stroke halos behind (no fill) -> clean glow, pure-black safe
+        glow = VGroup()
+        for w, o in [(16, 0.06), (9, 0.12), (4, 0.22)]:
+            glow.add(title.copy().set_fill(opacity=0).set_stroke(BLUE, width=w, opacity=o))
+        glow.set_z_index(-1)
+        glow.add_updater(lambda m: m.set_opacity(0.8 + 0.2 * (0.5 + 0.5 * np.sin(clock.get_value() * 1.9))))
 
-        def reticle_pulse(m):
-            p = 0.5 + 0.5 * np.sin(clock.get_value() * 2.4)
-            rg.set_stroke(RED, 9, 0.14 + 0.16 * p)
-        rg.add_updater(reticle_pulse)
-        emblem = VGroup(tile_glow, tile, reticle)
-
-        # =================================================================
-        # TITLE + SUBTITLE
-        # =================================================================
-        title = T("ARTIFICIAL DIVINITY INDEX", 38, WHITE, t2c={"INDEX": BLUE})
-        title.scale_to_fit_width(6.7)
-        tglow = title.copy().set_color(BLUE_BRT).scale(1.03).set_opacity(0.0)
-        tglow.add_updater(lambda m: m.set_opacity(0.22 + 0.08 * (0.5 + 0.5 * np.sin(clock.get_value() * 1.8))))
-
-        head = VGroup(emblem.scale_to_fit_height(1.06), title).arrange(RIGHT, buff=0.42).move_to([0, 1.55, 0])
-        tglow.move_to(title.get_center())
-
-        subtitle = T("A R C H I V E   E D I T I O N", 17, WHITE).set_opacity(0.9)
-        subtitle.move_to([0, 0.78, 0])
+        subtitle = T("A R C H I V E   E D I T I O N", 17, WHITE).set_opacity(0.9).move_to([0, 0.66, 0])
         sl, sr = subtitle.get_left()[0], subtitle.get_right()[0]
-        fl_l = VGroup(Line([sl - 1.05, 0.78, 0], [sl - 0.28, 0.78, 0], color=BLUE, stroke_width=1.4),
-                      Dot([sl - 0.18, 0.78, 0], radius=0.022, color=BLUE))
-        fl_r = VGroup(Line([sr + 1.05, 0.78, 0], [sr + 0.28, 0.78, 0], color=BLUE, stroke_width=1.4),
-                      Dot([sr + 0.18, 0.78, 0], radius=0.022, color=BLUE))
+        fl_l = VGroup(Line([sl - 1.05, 0.66, 0], [sl - 0.28, 0.66, 0], color=BLUE, stroke_width=1.6),
+                      Dot([sl - 0.18, 0.66, 0], radius=0.024, color=BLUE))
+        fl_r = VGroup(Line([sr + 1.05, 0.66, 0], [sr + 0.28, 0.66, 0], color=BLUE, stroke_width=1.6),
+                      Dot([sr + 0.18, 0.66, 0], radius=0.024, color=BLUE))
 
         # =================================================================
-        # SEGMENTED LOADING BAR  (glossy XP-style blocks)
+        # SEGMENTED LOADING BAR
         # =================================================================
-        bar_w, bar_y = 6.8, 0.0
+        bar_w, bar_y = 6.8, -0.18
         bar_l = -bar_w / 2
         container = RoundedRectangle(width=bar_w + 0.16, height=0.42, corner_radius=0.08,
-                                     stroke_color=DIM, stroke_width=1.4, fill_color="#070C16",
+                                     stroke_color=DIM, stroke_width=1.4, fill_color="#04060C",
                                      fill_opacity=1).move_to([0, bar_y, 0])
         cont_glow = RoundedRectangle(width=bar_w + 0.16, height=0.42, corner_radius=0.08,
-                                     stroke_color=BLUE, stroke_width=4, fill_opacity=0).set_stroke(opacity=0.10)
+                                     stroke_color=BLUE, stroke_width=5, fill_opacity=0).set_stroke(opacity=0.12)
         prog = ValueTracker(0.0)
         NSEG = 22
         seg_w = bar_w / NSEG
@@ -140,29 +101,27 @@ class DivinityLoader(Scene):
         def make_blocks():
             edge = prog.get_value() * NSEG
             g = VGroup()
+            fw = bar_w * prog.get_value()
+            if fw > 0.01:
+                g.add(Rectangle(width=fw, height=0.26, stroke_width=0, fill_opacity=0
+                                ).move_to([bar_l + fw / 2, bar_y, 0]).set_stroke(BLUE, 12, 0.28))
             for k in range(NSEG):
                 if k < edge - 0.001:
                     cx = bar_l + (k + 0.5) * seg_w
-                    blk = Rectangle(width=seg_w * 0.72, height=0.24, stroke_width=0,
-                                    fill_color=BLUE, fill_opacity=1).move_to([cx, bar_y, 0])
-                    gloss = Rectangle(width=seg_w * 0.72, height=0.10, stroke_width=0,
-                                      fill_color=BLUE_BRT, fill_opacity=0.55).move_to([cx, bar_y + 0.06, 0])
-                    g.add(blk, gloss)
-            if len(g):
-                fw = bar_w * prog.get_value()
-                halo = Rectangle(width=fw, height=0.24, stroke_width=0, fill_opacity=0
-                                 ).move_to([bar_l + fw / 2, bar_y, 0]).set_stroke(BLUE, 9, 0.22)
-                g.add(halo)
+                    g.add(Rectangle(width=seg_w * 0.72, height=0.24, stroke_width=0,
+                                    fill_color=BLUE, fill_opacity=1).move_to([cx, bar_y, 0]))
+                    g.add(Rectangle(width=seg_w * 0.72, height=0.09, stroke_width=0,
+                                    fill_color=BLUE_BRT, fill_opacity=0.7).move_to([cx, bar_y + 0.07, 0]))
             return g
         blocks = always_redraw(make_blocks)
 
         # =================================================================
-        # STATUS LINES  (circle marker + text; activate one by one)
+        # STATUS LINES
         # =================================================================
         STATUS = ["Initializing subject registry",
                   "Mounting restricted dossiers",
                   "Verifying divinity index"]
-        ly = [-0.78, -1.16, -1.54]
+        ly = [-0.92, -1.28, -1.64]
         rows = []
         for i, s in enumerate(STATUS):
             mk = Circle(radius=0.075, stroke_color=DIM, stroke_width=1.8, fill_color=BLUE, fill_opacity=0.0)
@@ -173,11 +132,11 @@ class DivinityLoader(Scene):
             rows.append({"mk": mk, "mglow": mglow, "txt": txt})
 
         # =================================================================
-        # FOOTER  (three columns) + live STATUS field
+        # FOOTER (three columns) + live STATUS
         # =================================================================
-        fy = -3.18
+        fy = -3.2
         f_l1 = T("A.D.I. ARCHIVE EDITION v1.0.4", 15, DIM)
-        f_l2 = T("BUILD 667.01.13", 15, BLUE)
+        f_l2 = T("BUILD 667.01.13", 15, BLUE_BRT)
         fl_col = VGroup(f_l1, f_l2).arrange(DOWN, aligned_edge=LEFT, buff=0.1)
         fl_col.move_to([-6.65 + fl_col.width / 2, fy - 0.07, 0])
 
@@ -186,31 +145,29 @@ class DivinityLoader(Scene):
         fc_col = VGroup(f_c1, f_c2).arrange(DOWN, buff=0.1).move_to([0, fy - 0.07, 0])
 
         f_r1 = T("ARTIFICIAL DIVINITY SUBSYSTEM", 15, DIM)
-        status_field = VGroup(T("STATUS: ", 15, DIM), T("BOOTING", 15, BLUE)).arrange(RIGHT, buff=0.12)
+        status_field = VGroup(T("STATUS: ", 15, DIM), T("BOOTING", 15, BLUE_BRT)).arrange(RIGHT, buff=0.12)
         fr_col = VGroup(f_r1, status_field).arrange(DOWN, aligned_edge=RIGHT, buff=0.1)
         fr_col.move_to([6.65 - fr_col.width / 2, fy - 0.07, 0])
 
         # =================================================================
-        # SEQUENCE  (~5s, clean and deterministic)
+        # SEQUENCE  (~5s)
         # =================================================================
-        self.add_sound(snd("dark_drone.wav"), gain=-18)
-        self.add(vign, scan)
-        self.add(tglow)
+        self.add_sound(snd("dark_drone.wav"), gain=-22)
+        self.add(scan, glow)
 
-        static = VGroup(emblem, title, subtitle, fl_l, fl_r, container, cont_glow,
-                        fl_col, fc_col, fr_col)
+        static = VGroup(title, subtitle, fl_l, fl_r, container, cont_glow, fl_col, fc_col, fr_col)
         self.play(FadeIn(static), run_time=0.7, rate_func=smooth)
         for r in rows:
             self.add(r["mk"], r["mglow"], r["txt"])
         self.add(blocks)
-        self.add_sound(snd("es_loading_slow.wav"), gain=-10)
-        self.wait(0.3)
+        self.add_sound(snd("es_loading_slow.wav"), gain=-6)   # the loading sound
+        self.wait(0.35)
 
         def activate(i, target, prev=None):
             self.add_sound(snd("es_system_beep.wav"), gain=-11)
             anims = [rows[i]["txt"].animate.set_color(WHITE),
                      rows[i]["mk"].animate.set_fill(BLUE, 1.0).set_stroke(BLUE, 1.8),
-                     rows[i]["mglow"].animate.set_stroke(BLUE, 5, 0.45),
+                     rows[i]["mglow"].animate.set_stroke(BLUE, 5, 0.5),
                      prog.animate.set_value(target)]
             if prev is not None:
                 anims += [rows[prev]["txt"].animate.set_color(DIM),
@@ -227,22 +184,22 @@ class DivinityLoader(Scene):
                   rows[2]["mk"].animate.set_fill(BLUE, 0.5),
                   rows[2]["txt"].animate.set_color(DIM), run_time=0.3)
 
-        # STATUS: BOOTING -> ACCESS GRANTED
+        # ACCESS GRANTED + STATUS -> READY
         self.add_sound(snd("es_select_ok.wav"), gain=-6)
         new_status = VGroup(T("STATUS: ", 15, DIM), T("READY", 15, BLUE_BRT)).arrange(RIGHT, buff=0.12)
         new_status.move_to(status_field.get_right(), aligned_edge=RIGHT)
-        ag = T("ACCESS GRANTED", 26, WHITE, t2c={"GRANTED": BLUE_BRT}).move_to([0, -2.18, 0])
-        self.play(FadeIn(ag, scale=1.1),
+        ag = Text("ACCESS GRANTED", font=TITLE_FONT, font_size=24,
+                  color=WHITE, t2c={"GRANTED": BLUE_BRT}).move_to([0, -2.28, 0])
+        ag_glow = VGroup(*[ag.copy().set_fill(opacity=0).set_stroke(BLUE, width=w, opacity=o)
+                           for w, o in [(16, 0.07), (8, 0.14)]]).set_z_index(-1)
+        self.play(FadeIn(ag, scale=1.1), FadeIn(ag_glow),
                   Transform(status_field, new_status), run_time=0.4, rate_func=rush_from)
-        self.wait(0.45)
+        self.wait(0.5)
 
-        # clean flash -> fade to black
-        self.add_sound(snd("transition.wav"), gain=-9)
-        flash = Rectangle(width=15, height=8.6, stroke_width=0, fill_color=WHITE, fill_opacity=0.0).set_z_index(50)
-        self.add(flash)
-        self.play(flash.animate.set_fill(WHITE, 0.45), run_time=0.08, rate_func=linear)
-        black = Rectangle(width=15, height=8.6, stroke_width=0, fill_color="#000000", fill_opacity=0.0).set_z_index(51)
+        # clean cut to black (into the selector)
+        self.add_sound(snd("es_system_beep.wav"), gain=-9)
+        black = Rectangle(width=15, height=8.6, stroke_width=0, fill_color="#000000",
+                          fill_opacity=0.0).set_z_index(60)
         self.add(black)
-        self.play(flash.animate.set_fill(WHITE, 0.0), black.animate.set_fill("#000000", 1.0),
-                  run_time=0.34, rate_func=smooth)
-        self.wait(0.22)
+        self.play(black.animate.set_fill("#000000", 1.0), run_time=0.3, rate_func=smooth)
+        self.wait(0.2)

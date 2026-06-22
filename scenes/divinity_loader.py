@@ -208,7 +208,7 @@ class DivinityLoader(Scene):
         def activate(i, target, prev=None):
             self.add_sound(snd("es_system_beep.wav"), gain=-11)
             r = rows[i]
-            anims = [r["txt"].animate.set_color(WHITE),
+            anims = [r["txt"].animate.set_color(BLUE_BRT),
                      r["mk"].animate.set_fill(BLUE, 1.0).set_stroke(BLUE, 1.8),
                      prog.animate.set_value(target)]
             if prev is not None:

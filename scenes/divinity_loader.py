@@ -28,6 +28,7 @@ BG       = "#000000"
 WHITE    = "#FFFFFF"
 BLUE     = "#246BFF"
 BLUE_BRT = "#7FB2FF"
+TITLE_BLUE = "#3F8BFF"
 DIM      = "#5A6E92"
 DIMMER   = "#33425E"
 
@@ -71,14 +72,9 @@ class DivinityLoader(Scene):
         # =================================================================
         # TITLE + GLOW
         # =================================================================
+        # title in BLUE; the soft glow behind comes from the post bloom
         title = Text("ARTIFICIAL DIVINITY INDEX", font=TITLE_FONT,
-                     color=WHITE).scale_to_fit_width(8.8).move_to([0, 1.45, 0])
-        glow = VGroup()
-        for w, o in [(16, 0.06), (9, 0.12), (4, 0.22)]:
-            glow.add(title.copy().set_fill(opacity=0).set_stroke(BLUE, width=w, opacity=o))
-        glow.set_z_index(-1).set_opacity(0.0)
-        glow_amt = ValueTracker(0.0)
-        glow.add_updater(lambda m: m.set_opacity(glow_amt.get_value() * (0.8 + 0.2 * (0.5 + 0.5 * np.sin(clock.get_value() * 1.9)))))
+                     color=TITLE_BLUE).scale_to_fit_width(8.8).move_to([0, 1.45, 0])
 
         subtitle = T("A R C H I V E   E D I T I O N", 17, WHITE).set_opacity(0.9).move_to([0, 0.66, 0])
         sl, sr = subtitle.get_left()[0], subtitle.get_right()[0]
@@ -188,10 +184,8 @@ class DivinityLoader(Scene):
         self.add_sound(snd("dark_drone.wav"), gain=-22)
         self.add(scan, scanline)
 
-        # 1) glow blooms, title resolves in, light sweep across it
-        self.add(glow, glow_amt)
+        # 1) title resolves in, light sweep across it (glow added in post)
         self.play(FadeIn(title, scale=1.06, shift=DOWN * 0.06),
-                  glow_amt.animate.set_value(1.0),
                   run_time=0.6, rate_func=smooth)
         light_sweep(title)
 

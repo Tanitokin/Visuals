@@ -182,6 +182,7 @@ class DivinityLoader(Scene):
         # SEQUENCE  (~6s, choreographed)
         # =================================================================
         self.add_sound(snd("dark_drone.wav"), gain=-22)
+        self.add_sound(snd("crt_hum.wav"), gain=-16)  # terminal background hum
         self.add(scan, scanline)
 
         # 1) title resolves in, light sweep across it (glow added in post)

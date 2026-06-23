@@ -8,10 +8,16 @@ in with a flare, a drifting scan line for life, and an ACCESS GRANTED burst.
 
 Title font: Ethnocentric.  Body font: TheSansMonoSCd.  SFX from assets/.
 
-Render at 60fps for smooth motion, then trim to length + audio fade:
-    ./.venv/bin/manim -qh --fps 60 scenes/divinity_loader.py DivinityLoader
-    ffmpeg -i <raw>.mp4 -t 6.2 -af "afade=t=out:st=5.9:d=0.3" \
-        -c:v libx264 -crf 14 -pix_fmt yuv420p -c:a aac -b:a 192k <final>.mp4
+Render at 4K/60 for supersampled sharpness, then bloom + lanczos downscale to
+1080p + light unsharp + trim to length with an audio fade:
+    ./.venv/bin/manim -qk --fps 60 scenes/divinity_loader.py DivinityLoader
+    ffmpeg -i <raw4k>.mp4 -t 8.23 -filter_complex \
+      "[0:v]format=gbrp,split=2[a][b];[b]gblur=sigma=18[bl];\
+       [a][bl]blend=all_mode=screen:all_opacity=0.42[o];\
+       [o]scale=1920:1080:flags=lanczos,unsharp=5:5:0.8:5:5:0.0,\
+       eq=contrast=1.06:saturation=1.18,format=yuv420p[v]" \
+      -map "[v]" -map 0:a -af "afade=t=out:st=7.93:d=0.3" \
+      -r 60 -c:v libx264 -crf 12 -pix_fmt yuv420p -c:a aac -b:a 192k <final>.mp4
 """
 
 import os
@@ -29,6 +35,8 @@ WHITE    = "#FFFFFF"
 BLUE     = "#246BFF"
 BLUE_BRT = "#7FB2FF"
 TITLE_BLUE = "#3F8BFF"
+GREEN     = "#2BE04F"
+GREEN_BRT = "#8BFFAD"
 DIM      = "#5A6E92"
 DIMMER   = "#33425E"
 
@@ -236,17 +244,17 @@ class DivinityLoader(Scene):
 
         # 6) ACCESS GRANTED burst + STATUS -> READY
         self.add_sound(snd("es_select_ok.wav"), gain=-6)
-        new_status = VGroup(T("STATUS: ", 15, DIM), T("READY", 15, BLUE_BRT)).arrange(RIGHT, buff=0.12)
+        new_status = VGroup(T("STATUS: ", 15, DIM), T("READY", 15, GREEN_BRT)).arrange(RIGHT, buff=0.12)
         new_status.move_to(status_field.get_right(), aligned_edge=RIGHT)
-        ag = Text("ACCESS GRANTED", font=TITLE_FONT, font_size=24, color=WHITE,
-                  t2c={"GRANTED": BLUE_BRT}).move_to([0, -2.3, 0])
-        agglow = VGroup(*[ag.copy().set_fill(opacity=0).set_stroke(BLUE, width=w, opacity=o)
+        ag = Text("ACCESS GRANTED", font=TITLE_FONT, font_size=24, color=GREEN_BRT
+                  ).move_to([0, -2.3, 0])
+        agglow = VGroup(*[ag.copy().set_fill(opacity=0).set_stroke(GREEN, width=w, opacity=o)
                           for w, o in [(18, 0.0), (9, 0.0)]]).set_z_index(-1)
         self.add(agglow)
         self.play(FadeIn(ag, scale=1.18),
-                  agglow.animate.set_stroke(BLUE, 14, 0.18),
+                  agglow.animate.set_stroke(GREEN, 14, 0.20),
                   Transform(status_field, new_status), run_time=0.45, rate_func=rush_from)
-        light_sweep(ag, run_time=0.4, op=0.5)
+        light_sweep(ag, run_time=0.4, color=GREEN_BRT, op=0.5)
         self.wait(0.5)
 
         # 7) clean cut to black

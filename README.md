@@ -17,6 +17,7 @@ segmented loading bars, mechanical SFX) plus a few standalone animations.
 │   ├── worst_cities.py      # WORST CITIES ranked countdown menu
 │   ├── divinity_index.py    # ARTIFICIAL DIVINITY INDEX 2x5 select screen
 │   ├── divinity_loader.py   # ARCHIVE ACCESS PROTOCOL corporate loading screen
+│   ├── cryptid_registry.py  # CRYPTID FIELD REGISTRY world-map region select
 │   ├── cycloid.py           # a rolling-circle cycloid animation
 │   └── orbital_uplink.py    # a satellite / ground-station animation
 ├── docs/
@@ -45,7 +46,8 @@ Output lands in `media/` (git-ignored).
 | `scenes/boot.py` | `WorstCitiesBoot` | CRT boot sequence: log ticks off, bar fills, ACCESS GRANTED. |
 | `scenes/worst_cities.py` | `WorstCities` | Ranked countdown #13→#01 with covers + dossier. |
 | `scenes/divinity_index.py` | `DivinityIndex` | "ARTIFICIAL DIVINITY INDEX" 2×5 god-select screen: cursor steps 01→10, selected in colour + name, others b/w, per-god select-click + fade-to-black. Images in `assets/divinity/`. |
-| `scenes/divinity_loader.py` | `DivinityLoader` | "ARCHIVE ACCESS PROTOCOL" ~5s corporate loading screen (emblem, bar, status lines, ACCESS GRANTED) that plays before the selector. Font: TheSansMonoSCd. |
+| `scenes/divinity_loader.py` | `DivinityLoader` | "ARCHIVE ACCESS PROTOCOL" ~8s corporate loading screen (blue title + glow, bar, status lines, green ACCESS GRANTED) that plays before the selector. Font: TheSansMonoSCd. |
+| `scenes/cryptid_registry.py` | `CryptidRegistry` | "CRYPTID FIELD REGISTRY" ~14s region-select: LED world map scans + LOCKS on EUROPE (green), push-in zoom reveals European cryptid sites (Loch Ness, Kraken, Gévaudan, Tatzelwurm, Black Shuck) with amber markers + callouts. LED maps generated in `assets/cryptid/`. |
 | `scenes/template_scene.py` | `CRTTemplate` | Minimal starter using the toolkit. |
 | `scenes/cycloid.py` | `CycloidScene` | Rolling circle traces a cycloid. |
 | `scenes/orbital_uplink.py` | `OrbitalUplink` | Satellite orbiting a wireframe planet. |

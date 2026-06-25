@@ -21,6 +21,11 @@ if [ ! -x .venv/bin/manim ]; then
   ./.venv/bin/pip install -q manim
 fi
 
+# 2b) extra deps for the accurate Europe map builder (geo_europe.py) ------
+if [ -x .venv/bin/python ]; then
+  ./.venv/bin/python -c "import shapely" 2>/dev/null || ./.venv/bin/pip install -q shapely
+fi
+
 # 3) Fonts (cheap; needed in every fresh container) -----------------------
 echo "[setup] installing fonts..."
 mkdir -p "$HOME/.local/share/fonts"

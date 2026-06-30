@@ -1,6 +1,8 @@
 /.venv/
 /.venv-hyperframes/
 /media/
+/scratchpad/
+/scratchpad_frames/
 __pycache__/
 *.pyc
 

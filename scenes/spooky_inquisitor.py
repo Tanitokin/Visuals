@@ -1,10 +1,19 @@
-"""spooky_inquisitor.py - "SPOOKY INQUISITOR PRESENTS" old-TV title card.
+"""spooky_inquisitor.py - 5s CRT/VHS horror intro: "SPOOKY INQUISITOR PRESENTS".
 
-A vintage CRT television turns on (a bright horizontal line blooms open into a
-full screen), bursts into snowy static, then settles into heavy scanlines while
-the title is written in red pixel letters ("Press Start 2P") with bad-convergence
-colour fringing, a drifting vertical-hold roll bar, and a flickering red glow.
-Finally the set powers off, collapsing back to a dot. Black background.
+Hard-cut analog horror title card (NO smooth fades, no modern motion graphics):
+
+    0.00-0.50  black + subtle analog grain
+    0.50-0.85  static burst reveals the logo
+    0.85-1.15  logo glitches into place (RGB split, tracking jumps, jitter)
+    1.15-3.15  logo readable ~2s while the signal stays unstable
+    3.15-3.45  "PRESENTS" snaps in with a short flicker
+    3.45-4.40  brief hold
+    4.40-4.70  harsh VHS glitch tears the logo apart
+    4.70-4.90  full static burst
+    4.90-5.00  hard cut to black
+
+Everything is driven by per-frame updaters (jitter, RGB split, scanline flicker,
+horizontal tracking errors, snow). No self.play()/fades are used at all.
 
 Render:
     manim -pqh --fps 30 scenes/spooky_inquisitor.py SpookyInquisitorTV
@@ -19,78 +28,66 @@ from manim import *
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # find crt_style next to this file
 from crt_style import snd  # reuse the assets/audio path helper
 
-# --- old-TV palette -------------------------------------------------------
-TVBLACK = "#000000"   # screen black
-RED     = "#FF2B2B"   # phosphor red
-RED_BRT = "#FF7A6B"   # hot highlight
-RED_DIM = "#7E1212"   # dim red
-WHITE   = "#FFFFFF"   # power-on bloom / hot scanline
-GHOST_B = "#2BB6FF"   # bad-convergence blue fringe
-GHOST_G = "#2BFF8F"   # bad-convergence green fringe
+# --- palette --------------------------------------------------------------
+BLACK   = "#000000"
+WHITE   = "#FFFFFF"
+RED     = "#FF2B2B"   # readable phosphor red (logo core)
+GHOST_R = "#FF0033"   # red channel ghost
+GHOST_C = "#1FE6E6"   # cyan channel ghost (green+blue split)
 
 PIXEL = "Press Start 2P"
-
 FW, FH = 14.22, 8.0   # default 16:9 frame size in Manim units
 
+# --- phase boundaries (seconds) ------------------------------------------
+T_GRAIN   = 0.50   # black + subtle grain
+T_BURST   = 0.85   # static burst reveal
+T_GLITCH  = 1.15   # glitch into place
+T_HOLD    = 3.15   # readable hold (~2s)
+T_PRES    = 3.45   # PRESENTS flicker in
+T_HOLD2   = 4.40   # short hold
+T_TEAR    = 4.70   # harsh glitch tears logo
+T_SNOW    = 4.90   # full static burst
+T_END     = 5.00   # hard cut to black
 
-def glow(mob, color=RED, specs=((16, 0.05), (9, 0.11), (4.5, 0.22))):
-    """Soft red phosphor halo behind text (stacked translucent strokes)."""
-    return VGroup(*[mob.copy().set_stroke(color, width=w, opacity=o).set_fill(opacity=0)
-                    for w, o in specs])
+
+def noise_level(t):
+    """Snow intensity per phase (stepped, never a smooth fade)."""
+    if t < T_GRAIN:  return 0.16
+    if t < T_BURST:  return 1.00
+    if t < T_GLITCH: return 0.32
+    if t < T_HOLD:   return 0.07
+    if t < T_PRES:   return 0.20
+    if t < T_HOLD2:  return 0.08
+    if t < T_TEAR:   return 0.40
+    if t < T_SNOW:   return 1.00
+    return 0.0
 
 
-def fringe(mob, dx=0.06):
-    """Bad-convergence colour fringing: faint blue/green ghosts offset L/R."""
-    b = mob.copy().set_color(GHOST_B).set_opacity(0.45).shift(LEFT * dx + UP * 0.012)
-    g = mob.copy().set_color(GHOST_G).set_opacity(0.32).shift(RIGHT * dx + DOWN * 0.012)
-    return VGroup(b, g)
+def glitch_amt(t):
+    """Instability amount [0..~1.3]; spikes are added by the caller per frame."""
+    if t < T_BURST:  return 0.0
+    if t < T_GLITCH: return 1.10
+    if t < T_HOLD:   return 0.16
+    if t < T_PRES:   return 0.45
+    if t < T_HOLD2:  return 0.22
+    if t < T_TEAR:   return 1.20
+    if t < T_SNOW:   return 1.20
+    return 0.0
 
 
 class SpookyInquisitorTV(Scene):
     def construct(self):
-        self.camera.background_color = TVBLACK
-        np.random.seed(7)
+        self.camera.background_color = BLACK
+        np.random.seed(13)
 
         clock = ValueTracker(0.0)
         clock.add_updater(lambda m, dt: m.increment_value(dt))
         self.add(clock)
 
         # =================================================================
-        # CRT ambience: scanlines, drifting roll bar, brightness flicker.
-        # Kept above the picture so it cuts into the lit red text.
+        # Snow / analog noise field (blocky pixel grid).
         # =================================================================
-        scan = VGroup(*[
-            Line([-FW / 2, y, 0], [FW / 2, y, 0], color=TVBLACK, stroke_width=2.6,
-                 stroke_opacity=0.30)
-            for y in np.arange(-FH / 2, FH / 2, 0.085)
-        ]).set_z_index(30)
-
-        # vertical-hold "roll" band that slowly creeps up the screen
-        roll = Rectangle(width=FW, height=0.55, stroke_width=0,
-                         fill_color=WHITE, fill_opacity=0.05).set_z_index(28)
-        roll.add_updater(lambda m: m.move_to(
-            [0, -FH / 2 + ((clock.get_value() * 1.3) % (FH + 0.55)), 0]))
-
-        # global brightness flicker + rare interference spikes
-        flick = Rectangle(width=FW + 1, height=FH + 1, stroke_width=0,
-                          fill_color=TVBLACK, fill_opacity=0.0).set_z_index(36)
-
-        def flick_upd(m):
-            t = clock.get_value()
-            base = 0.05 + 0.05 * (0.5 + 0.5 * np.sin(t * 7.0))
-            spike = 0.10 if (np.sin(t * 53.0) > 0.9) else 0.0
-            m.set_opacity(base + spike)
-        flick.add_updater(flick_upd)
-
-        # corner vignette (four dim wedges so the tube edges fall off to black)
-        vig = VGroup()
-        for cx, cy in [(-FW / 2, FH / 2), (FW / 2, FH / 2), (-FW / 2, -FH / 2), (FW / 2, -FH / 2)]:
-            d = Dot([cx, cy, 0], radius=3.4, color=TVBLACK).set_opacity(0.0)
-            vig.add(d)
-        vig.set_z_index(26)
-
-        # --- snowy static field (blocky grayscale grid; only shown briefly) ---
-        cols, rows = 48, 27
+        cols, rows = 52, 30
         cw, ch = FW / cols, FH / rows
         static = VGroup()
         for r in range(rows):
@@ -100,117 +97,156 @@ class SpookyInquisitorTV(Scene):
                 sq.move_to([-FW / 2 + (c + 0.5) * cw, FH / 2 - (r + 0.5) * ch, 0])
                 static.add(sq)
         static.set_z_index(20)
+        cells = list(static)
 
         def static_upd(m):
-            v = np.random.uniform(0.05, 0.85, len(m))
-            for sq, a in zip(m, v):
+            lvl = noise_level(clock.get_value())
+            if lvl <= 0.0:
+                for sq in cells:
+                    sq.set_opacity(0.0)
+                return
+            vals = np.random.uniform(0.04, 0.95, len(cells)) * lvl
+            for sq, a in zip(cells, vals):
                 sq.set_fill(WHITE, opacity=float(a))
+        static.add_updater(static_upd)
 
         # =================================================================
-        # 1) POWER ON: a hot white line blooms open into a full screen.
+        # Logo: red core + red/cyan channel ghosts (RGB split).
         # =================================================================
-        self.add_sound(snd("boot.wav"), gain=-3)
-        self.add_sound(snd("crt_hum.wav"), gain=-12)
+        line1 = Text("SPOOKY", font=PIXEL, color=RED).scale_to_fit_width(8.8).move_to([0, 1.05, 0])
+        line2 = Text("INQUISITOR", font=PIXEL, color=RED).scale_to_fit_width(12.4).move_to([0, -0.55, 0])
+        core = VGroup(line1, line2).set_z_index(13)
+        ghost_r = core.copy().set_color(GHOST_R).set_z_index(11)
+        ghost_c = core.copy().set_color(GHOST_C).set_z_index(12)
+        TBASE = np.array([0.0, 0.25, 0.0])
 
-        bloom = Rectangle(width=FW, height=0.0, stroke_width=0,
-                          fill_color=WHITE, fill_opacity=1.0).set_z_index(40)
-        hot_line = Line([-FW / 2, 0, 0], [FW / 2, 0, 0], color=WHITE,
-                        stroke_width=4).set_z_index(41)
-        self.add(hot_line)
-        self.play(hot_line.animate.set_stroke(width=8, opacity=1.0), run_time=0.18)
-        self.add(bloom)
-        self.play(bloom.animate.stretch_to_fit_height(FH).set_fill(WHITE, opacity=0.9),
-                  hot_line.animate.set_opacity(0.0), run_time=0.28, rate_func=rush_from)
-        self.remove(hot_line)
-
-        # =================================================================
-        # 2) STATIC burst, then settle into the dark CRT.
-        # =================================================================
-        self.add_sound(snd("glitch.wav"), gain=-4)
-        self.add(static)
-        static.add_updater(lambda m: static_upd(m))
-        self.play(bloom.animate.set_fill(WHITE, opacity=0.0), run_time=0.18)
-        self.remove(bloom)
-        self.wait(0.55)                     # snow
-        self.add(scan, roll, vig, flick)    # bring CRT ambience up under the snow
-        self.play(static.animate.set_opacity(0.0), run_time=0.45)
-        static.clear_updaters()
-        self.remove(static)
-
-        # =================================================================
-        # 3) TITLE: red pixel letters with colour fringing + glow.
-        # =================================================================
-        line1 = Text("SPOOKY", font=PIXEL, color=RED).scale_to_fit_width(9.6).move_to([0, 1.75, 0])
-        line2 = Text("INQUISITOR", font=PIXEL, color=RED).scale_to_fit_width(12.2).move_to([0, 0.15, 0])
-        presents = Text("PRESENTS", font=PIXEL, color=RED_BRT).scale_to_fit_width(5.4).move_to([0, -2.05, 0])
-
-        def reveal(word, sound="letter.wav", glitch=True):
-            """Pop a word in with a quick horizontal jitter + colour fringe."""
-            fr = fringe(word).set_z_index(8)
-            gl = glow(word).set_z_index(7)
-            word.set_z_index(10)
-            self.add_sound(snd(sound), gain=-5)
-            self.add(fr, gl)
-            # brief horizontal "tracking" jitter as it locks in
-            jit = VGroup(word, fr, gl)
-            self.play(FadeIn(word, scale=1.06), FadeIn(gl), FadeIn(fr), run_time=0.28)
-            if glitch:
-                for dx in (0.18, -0.12, 0.06, 0.0):
-                    self.play(jit.animate.shift([dx, 0, 0]), run_time=0.05)
-            return VGroup(word, fr, gl)
-
-        g1 = reveal(line1, sound="ui_step.wav")
-        self.wait(0.08)
-        g2 = reveal(line2, sound="ui_step.wav")
-        self.wait(0.12)
-
-        # "PRESENTS" fades up dimmer, with a settle flash
-        pfr = fringe(presents, dx=0.04).set_z_index(8)
-        pgl = glow(presents, color=RED, specs=((10, 0.05), (5, 0.12))).set_z_index(7)
-        presents.set_z_index(10)
-        self.add_sound(snd("transition.wav"), gain=-4)
-        self.add(pfr, pgl)
-        self.play(FadeIn(presents, shift=UP * 0.12), FadeIn(pgl), FadeIn(pfr), run_time=0.5)
-
-        # white settle flash (the picture "locking")
-        fl = Rectangle(width=FW + 1, height=FH + 1, stroke_width=0,
-                       fill_color=WHITE, fill_opacity=0.0).set_z_index(42)
-        self.add(fl)
-        self.play(fl.animate.set_fill(WHITE, opacity=0.22), run_time=0.06)
-        self.play(fl.animate.set_fill(WHITE, opacity=0.0), run_time=0.22, rate_func=smooth)
-        self.remove(fl)
-
-        # =================================================================
-        # 4) HOLD: red glow pulse + occasional tracking wobble on the title.
-        # =================================================================
-        title = VGroup(g1, g2, VGroup(presents, pfr, pgl))
-
-        def pulse_upd(m):
+        def title_upd(_):
             t = clock.get_value()
-            for w in (line1, line2):
-                w.set_color(interpolate_color(
-                    ManimColor(RED), ManimColor(RED_BRT), 0.5 + 0.5 * np.sin(t * 3.2)))
-        title.add_updater(pulse_upd)
-        self.wait(2.4)
-        title.clear_updaters()
+            g = glitch_amt(t)
+            # random instability spikes while "readable"
+            if g and np.random.random() < 0.10 + 0.5 * g:
+                g += np.random.uniform(0.2, 0.9)
+            vis = 1.0 if (T_GRAIN <= t < T_END and t < T_SNOW + 0.0001) else 0.0
+            # heavy snow already hides it during bursts; cut it at the very end
+            if t >= T_SNOW:
+                vis = 0.0
+            # frame jitter + occasional horizontal tracking jump
+            jx = np.random.uniform(-1, 1) * 0.045 * g
+            jy = np.random.uniform(-1, 1) * 0.035 * g
+            if np.random.random() < 0.22 * g:
+                jx += np.random.uniform(-1, 1) * 0.55 * g
+            base = TBASE + np.array([jx, jy, 0.0])
+            split = (0.035 + 0.20 * g)
+            if np.random.random() < 0.12:
+                split *= 2.6                       # momentary big chroma tear
+            core.move_to(base)
+            ghost_c.move_to(base + np.array([+split, -0.012, 0.0]))
+            ghost_r.move_to(base + np.array([-split, +0.012, 0.0]))
+            core.set_opacity(vis)
+            ghost_c.set_opacity(0.85 * vis)
+            ghost_r.set_opacity(0.85 * vis)
+        core.add_updater(title_upd)
 
         # =================================================================
-        # 5) POWER OFF: collapse to a bright line, then a dot, then black.
+        # "PRESENTS" - snaps in with a short flicker.
         # =================================================================
-        self.add_sound(snd("click.wav"), gain=-2)
-        collapse = VGroup(scan, roll, vig, title)
-        sheet = Rectangle(width=FW, height=FH, stroke_width=0,
-                          fill_color=WHITE, fill_opacity=0.0).set_z_index(44)
-        self.add(sheet)
-        self.play(FadeOut(title), FadeOut(scan), FadeOut(roll), FadeOut(vig),
-                  sheet.animate.set_fill(WHITE, opacity=0.85), run_time=0.16)
-        self.play(sheet.animate.stretch_to_fit_height(0.06).set_fill(WHITE, opacity=1.0),
-                  run_time=0.18, rate_func=rush_into)
-        dot = Dot([0, 0, 0], radius=0.05, color=WHITE).set_z_index(45)
-        self.add(dot)
-        self.play(sheet.animate.stretch_to_fit_width(0.06), FadeIn(dot), run_time=0.12)
-        self.remove(sheet)
-        flick.clear_updaters()
-        self.play(dot.animate.scale(0.01).set_opacity(0.0),
-                  flick.animate.set_opacity(0.0), run_time=0.45, rate_func=rush_into)
-        self.wait(0.4)
+        presents = Text("PRESENTS", font=PIXEL, color="#FF6B6B").scale_to_fit_width(5.0)
+        presents.move_to([0, -2.55, 0]).set_z_index(13).set_opacity(0.0)
+        pr_r = presents.copy().set_color(GHOST_R).set_z_index(11)
+        pr_c = presents.copy().set_color(GHOST_C).set_z_index(12)
+
+        def presents_upd(_):
+            t = clock.get_value()
+            if t < T_PRES:
+                on = 0.0
+            elif t < T_PRES + 0.30:
+                on = 1.0 if (np.random.random() > 0.45) else 0.0   # short flicker
+            elif t < T_SNOW:
+                on = 1.0
+            else:
+                on = 0.0
+            g = glitch_amt(t)
+            split = 0.03 + 0.16 * g
+            base = np.array([0, -2.55, 0.0]) + np.array([np.random.uniform(-1, 1) * 0.04 * g, 0, 0])
+            presents.move_to(base).set_opacity(on)
+            pr_c.move_to(base + np.array([+split, 0, 0])).set_opacity(0.8 * on)
+            pr_r.move_to(base + np.array([-split, 0, 0])).set_opacity(0.8 * on)
+        presents.add_updater(presents_upd)
+
+        # =================================================================
+        # CRT ambience: flickering scanlines, sweeping tracking bar,
+        # random dropout lines, brightness flicker / white-flash glitch.
+        # =================================================================
+        scan = VGroup(*[
+            Line([-FW / 2, y, 0], [FW / 2, y, 0], color=BLACK, stroke_width=2.4,
+                 stroke_opacity=0.30)
+            for y in np.arange(-FH / 2, FH / 2, 0.085)
+        ]).set_z_index(30)
+
+        def scan_upd(m):
+            g = glitch_amt(clock.get_value())
+            m.set_stroke(BLACK, opacity=0.22 + 0.22 * np.random.random() + 0.12 * g)
+        scan.add_updater(scan_upd)
+
+        # bright VHS tracking bar that sweeps up the screen
+        tbar = Rectangle(width=FW, height=0.5, stroke_width=0,
+                         fill_color=WHITE, fill_opacity=0.0).set_z_index(22)
+
+        def tbar_upd(m):
+            t = clock.get_value()
+            g = glitch_amt(t)
+            y = -FH / 2 + ((t * 2.1) % (FH + 1.0))
+            op = 0.05 + 0.05 * np.random.random() + 0.18 * g
+            m.move_to([np.random.uniform(-1, 1) * 0.2 * g, y, 0]).set_fill(WHITE, opacity=op)
+        tbar.add_updater(tbar_upd)
+
+        # random horizontal dropout streaks (signal tears)
+        drops = VGroup(*[Line([-FW / 2, 0, 0], [FW / 2, 0, 0], color=WHITE,
+                              stroke_width=2, stroke_opacity=0.0) for _ in range(5)]).set_z_index(24)
+
+        def drops_upd(m):
+            g = glitch_amt(clock.get_value())
+            for ln in m:
+                if np.random.random() < 0.10 + 0.45 * g:
+                    y = np.random.uniform(-FH / 2 + 0.2, FH / 2 - 0.2)
+                    col = WHITE if np.random.random() > 0.4 else BLACK
+                    ln.put_start_and_end_on([-FW / 2, y, 0], [FW / 2, y, 0])
+                    ln.set_stroke(col, width=float(np.random.uniform(1.5, 5.0)),
+                                  opacity=float(np.random.uniform(0.3, 0.9)))
+                else:
+                    ln.set_stroke(opacity=0.0)
+        drops.add_updater(drops_upd)
+
+        # brightness flicker + white-flash on glitches
+        flick = Rectangle(width=FW + 1, height=FH + 1, stroke_width=0,
+                          fill_color=BLACK, fill_opacity=0.0).set_z_index(36)
+
+        def flick_upd(m):
+            g = glitch_amt(clock.get_value())
+            if np.random.random() < 0.14 * g:
+                m.set_fill(WHITE, opacity=0.12 + 0.22 * np.random.random())
+            else:
+                m.set_fill(BLACK, opacity=0.03 + 0.06 * np.random.random())
+        flick.add_updater(flick_upd)
+
+        # =================================================================
+        # Assemble + run. Only self.add / self.wait — no play()/fades.
+        # =================================================================
+        self.add(ghost_r, ghost_c, core, presents, pr_r, pr_c,
+                 static, tbar, drops, scan, flick)
+
+        self.add_sound(snd("ambient.wav"), gain=-15)
+        self.wait(T_GRAIN)                                   # black + grain
+        self.add_sound(snd("glitch.wav"), gain=-2)
+        self.wait(T_BURST - T_GRAIN)                         # static burst reveal
+        self.add_sound(snd("glitch.wav"), gain=-7)
+        self.wait(T_GLITCH - T_BURST)                        # glitch into place
+        self.wait(T_HOLD - T_GLITCH)                         # readable hold (~2s)
+        self.add_sound(snd("blip.wav"), gain=-3)
+        self.wait(T_PRES - T_HOLD)                           # PRESENTS flicker
+        self.wait(T_HOLD2 - T_PRES)                          # short hold
+        self.add_sound(snd("glitch.wav"), gain=0)
+        self.add_sound(snd("boom.wav"), gain=-5)
+        self.wait(T_TEAR - T_HOLD2)                          # harsh tear
+        self.wait(T_SNOW - T_TEAR)                           # full static burst
+        self.wait(T_END - T_SNOW)                            # hard cut to black

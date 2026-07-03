@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THE GREAT ABYSS DATABASE</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Fixed 1920x1080 stage, scaled to fit the window. Record fullscreen at 1080p. -->
+<div id="stage" class="stage">
+  <div id="shaker" class="shaker">
+
+    <!-- ============ BOOT SEQUENCE ============ -->
+    <section id="boot" class="boot">
+      <pre id="boot-log" class="boot-log"></pre>
+      <div id="boot-cursor" class="boot-cursor">█</div>
+    </section>
+
+    <!-- ============ MAIN INTERFACE ============ -->
+    <section id="console" class="console hidden">
+
+      <header class="topbar">
+        <div class="topbar-left">
+          <span class="sys-id">GAD-77 // THE GREAT ABYSS DATABASE</span>
+        </div>
+        <div class="topbar-mid blink-slow">THREAT INDEX ACTIVE</div>
+        <div class="topbar-right">
+          <span id="clock" class="clock">00:00:00</span>
+          <span class="rec">&#9679; REC</span>
+        </div>
+      </header>
+
+      <div class="frame-line"></div>
+
+      <main class="split">
+
+        <!-- LEFT: scrolling theory list -->
+        <nav class="menu-pane">
+          <div class="pane-label">SCENARIO INDEX // 12 FILES</div>
+          <div class="menu-window">
+            <ul id="menu-list" class="menu-list"><!-- built by script.js --></ul>
+          </div>
+          <div class="menu-footer">
+            <span class="blink-slow">&#9660;</span> AUTOSCAN ENABLED
+          </div>
+        </nav>
+
+        <div class="divider"></div>
+
+        <!-- RIGHT: threat file panel -->
+        <aside id="file-panel" class="file-pane">
+          <div class="file-head">
+            <span id="file-no" class="file-no">THREAT FILE 01/12</span>
+            <span class="file-class">CLASS: FORBIDDEN</span>
+          </div>
+
+          <h1 id="file-title" class="file-title">&nbsp;</h1>
+
+          <div class="file-body">
+            <figure class="archive-frame">
+              <div class="frame-tag">ARCHIVE IMG // DEGRADED</div>
+              <img id="file-img" class="file-img" src="" alt="">
+              <div id="img-fallback" class="img-fallback hidden">
+                <span>IMAGE SIGNAL<br>CORRUPTED</span>
+              </div>
+              <div class="frame-scan"></div>
+            </figure>
+
+            <div class="stats">
+              <div class="stat"><span class="k">DANGER INDEX</span><span id="st-danger" class="v">--%</span></div>
+              <div class="stat"><span class="k">PLAUSIBILITY</span><span id="st-plaus" class="v">--</span></div>
+              <div class="stat"><span class="k">TIMEFRAME</span><span id="st-time" class="v">--</span></div>
+              <div class="stat"><span class="k">HUMAN ROLE</span><span id="st-role" class="v">--</span></div>
+              <div class="stat"><span class="k">HARVEST TYPE</span><span id="st-harvest" class="v">--</span></div>
+              <div class="stat"><span class="k">CONTACT STATUS</span><span id="st-contact" class="v">--</span></div>
+
+              <div class="danger-row">
+                DANGER [<span id="danger-bar" class="danger-bar"></span>] <span id="danger-pct">0%</span>
+              </div>
+
+              <div id="warning" class="warning">WARNING: --</div>
+            </div>
+          </div>
+        </aside>
+      </main>
+
+      <div class="frame-line"></div>
+
+      <footer class="ticker-bar">
+        <div id="ticker" class="ticker">
+          <span id="ticker-text"></span><span id="ticker-text2"></span>
+        </div>
+      </footer>
+    </section>
+
+    <!-- ============ LOCK SCREEN ============ -->
+    <section id="lock" class="lock hidden">
+      <div class="lock-inner">
+        <div class="lock-label blink-fast">FILE SELECTED:</div>
+        <div id="lock-title" class="lock-title">&nbsp;</div>
+        <div class="lock-access">ACCESSING SCENARIO<span class="dots"></span></div>
+      </div>
+    </section>
+
+    <!-- corrupted text fragments layer (glitch) -->
+    <div id="corrupt-layer" class="corrupt-layer"></div>
+  </div>
+
+  <!-- CRT overlays -->
+  <div class="fx scanlines"></div>
+  <div class="fx noise"></div>
+  <div class="fx flicker"></div>
+  <div class="fx vignette"></div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>

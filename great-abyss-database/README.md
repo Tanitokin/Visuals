@@ -27,8 +27,8 @@ Everything lives in `index.html`:
 
 ## Images
 
-Drop real archive images into `assets/` next to `index.html`, using the exact
-filenames from the `theories` array (e.g. `assets/flesh-gardeners.png`).
+Drop real archive images into `assets/images/` next to `index.html`, using the exact
+filenames from the `theories` array (e.g. `assets/images/flesh-gardeners.png`).
 Until then each file shows a generated corrupted-archive placeholder with the
 theory name.
 
